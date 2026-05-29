@@ -182,7 +182,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
       <input type="file" id="fsu-portfolio" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpdate('portfolio')">
     </div>
     <div class="file-src" id="fsr-ucr" onclick="triggerFileUpdate('ucr')" title="Click to reload from file">
-      <span class="file-src-name" id="fsn-ucr">Use Cases.xlsx</span>
+      <span class="file-src-name" id="fsn-ucr">Use Cases.csv</span>
       <span class="file-src-btn">↺</span>
       <input type="file" id="fsu-ucr" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileUpdate('ucr')">
     </div>
@@ -537,7 +537,7 @@ function renderFileSources(fns){
       nameEl.textContent=fns[k];
       chip.classList.remove('unloaded');
     }else{
-      nameEl.textContent=k==='jira'?'Jira (not loaded)':k==='ucr'?'Use Cases.xlsx':'Mission_Portfolio.xlsx';
+      nameEl.textContent=k==='jira'?'Jira (not loaded)':k==='ucr'?'Use Cases.csv':'Mission_Portfolio.xlsx';
       chip.classList.add('unloaded');
     }
   });
