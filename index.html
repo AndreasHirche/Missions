@@ -264,6 +264,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 
 // ── State ──────────────────────────────────────────────────────────────
 var allMissions=[], filtered=[], sortCol='', sortDir=1, curPage=1;
+var _manualPortfolio=null, _manualUCR=null;
 var statusChart=null, categoryChart=null, coachChart=null;
 var activeCoach='';
 var colDropTarget=null;
@@ -397,19 +398,19 @@ function isExpiringSoon(v){
 
 // ── Init ───────────────────────────────────────────────────────────────
 async function init(){
+  // Always fetch portfolio + UCR fresh (they are committed to the repo).
+  // Only restore Jira from cache (user-uploaded, not in repo).
+  var jiraRows=[], fns={portfolio:'Mission_Portfolio.xlsx',ucr:'Use Cases.csv',jira:''};
   try{
     var cached=localStorage.getItem('missions_cache_v4');
     if(cached){
       var data=JSON.parse(cached);
-      if(data.jira&&data.jira.length){VAL_MAP=parseJira(data.jira);}
-      renderFileSources(data.fileNames||{});
-      processData(data.portfolio,data.ucr);
-      return;
+      if(data.jira&&data.jira.length){jiraRows=data.jira;VAL_MAP=parseJira(jiraRows);}
+      if(data.fileNames&&data.fileNames.jira)fns.jira=data.fileNames.jira;
     }
   }catch(e){}
   if(location.protocol!=='file:'){
     try{
-      // Try Use Cases.xlsx first, fall back to .csv
       var ucrRows, ucrName;
       try{
         ucrRows=await loadExcel('Use Cases.xlsx');
@@ -422,27 +423,27 @@ async function init(){
         loadExcel('Mission_Portfolio.xlsx'),
         Promise.resolve(ucrRows)
       ]);
-      var jiraRows=[];
-      try{
-        var jr=await fetch('Jira_Validation.xls');
-        if(jr.ok){jiraRows=parseJiraExcel(await jr.arrayBuffer());VAL_MAP=parseJira(jiraRows);}
-      }catch(e2){}
-      var fns={portfolio:'Mission_Portfolio.xlsx',ucr:ucrName,jira:jiraRows.length?'Jira_Validation.xls':''};
-      saveCache(results[0],results[1],jiraRows,fns);
+      // Try fetching Jira from repo only if not already in cache
+      if(!jiraRows.length){
+        try{
+          var jr=await fetch('Jira_Validation.xls');
+          if(jr.ok){jiraRows=parseJiraExcel(await jr.arrayBuffer());VAL_MAP=parseJira(jiraRows);}
+        }catch(e2){}
+      }
+      fns={portfolio:'Mission_Portfolio.xlsx',ucr:ucrName,jira:jiraRows.length?fns.jira||'Jira_Validation.xls':''};
+      saveCache(null,null,jiraRows,fns);
       renderFileSources(fns);
       processData(results[0],results[1]);
       return;
-    }catch(e){}
+    }catch(e){console.error('init fetch failed',e);}
   }
   showNoData();
 }
 
 function saveCache(portfolio,ucr,jira,fns){
-  try{localStorage.setItem('missions_cache_v4',JSON.stringify({portfolio:portfolio,ucr:ucr,jira:jira||[],fileNames:fns||{}}));}
-  catch(e){
-    // quota exceeded — try without jira rows
-    try{localStorage.setItem('missions_cache_v4',JSON.stringify({portfolio:portfolio,ucr:ucr,jira:[],fileNames:fns||{}}));}catch(e2){}
-  }
+  // Only persist Jira rows + filenames — portfolio/UCR are always fetched fresh
+  try{localStorage.setItem('missions_cache_v4',JSON.stringify({jira:jira||[],fileNames:fns||{}}));}
+  catch(e){}
 }
 
 function clearCache(){
@@ -553,30 +554,33 @@ async function handleFileUpdate(which){
   var f=input.files[0];
   try{
     var cached=JSON.parse(localStorage.getItem('missions_cache_v4')||'{}');
-    if(which==='portfolio'){
-      cached.portfolio=parseExcel(await readFileAsBuffer(f));
-    }else if(which==='ucr'){
-      if(f.name.toLowerCase().endsWith('.csv')){
+    if(!cached.fileNames)cached.fileNames={};
+    if(which==='portfolio'||which==='ucr'){
+      // For manually uploaded portfolio/UCR: parse the file, store in a session var, re-render
+      // (not cached to localStorage — too large)
+      var rows;
+      if(which==='ucr'&&f.name.toLowerCase().endsWith('.csv')){
         var wb=XLSX.read(await f.text(),{type:'string',cellDates:true});
-        cached.ucr=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+        rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
       }else{
-        cached.ucr=parseExcel(await readFileAsBuffer(f));
+        rows=parseExcel(await readFileAsBuffer(f));
       }
+      if(which==='portfolio')_manualPortfolio=rows; else _manualUCR=rows;
+      cached.fileNames[which]=f.name;
+      localStorage.setItem('missions_cache_v4',JSON.stringify({jira:cached.jira||[],fileNames:cached.fileNames}));
+      renderFileSources(cached.fileNames);
+      var port=_manualPortfolio||null, ucr=_manualUCR||null;
+      if(port&&ucr)processData(port,ucr);
     }else if(which==='jira'){
       var jiraRows=parseJiraExcel(await readFileAsBuffer(f));
       if(jiraRows&&jiraRows.length){VAL_MAP=parseJira(jiraRows);}
-      // store only the slimmed rows (keep/Status/Summary columns only — already slimmed by parseJiraExcel)
       cached.jira=jiraRows;
+      cached.fileNames[which]=f.name;
+      try{localStorage.setItem('missions_cache_v4',JSON.stringify({jira:jiraRows,fileNames:cached.fileNames}));}catch(e){}
+      renderFileSources(cached.fileNames);
+      // re-render with fresh portfolio+UCR from server
+      init();
     }
-    if(!cached.fileNames)cached.fileNames={};
-    cached.fileNames[which]=f.name;
-    try{localStorage.setItem('missions_cache_v4',JSON.stringify(cached));}
-    catch(e){
-      // quota exceeded — save without jira rows
-      try{var slim=Object.assign({},cached,{jira:[]});localStorage.setItem('missions_cache_v4',JSON.stringify(slim));}catch(e2){}
-    }
-    renderFileSources(cached.fileNames);
-    if(cached.portfolio&&cached.ucr)processData(cached.portfolio,cached.ucr);
   }catch(e){alert('Failed to load '+f.name+': '+e.message);}
   input.value='';
 }
