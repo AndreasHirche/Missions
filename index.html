@@ -22,7 +22,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .wrap{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:32px 16px}
 
 /* Header */
-header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;position:relative}
 .header-brand{flex:0 0 auto}
 header h1{font-size:1.9rem;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 header p{color:var(--muted);font-size:0.82rem;margin-top:4px}
@@ -172,6 +172,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
     <div class="header-search">
       <input type="text" id="search" placeholder="Search name, author, tags, ID…" oninput="applyFilters()">
     </div>
+    <img src="ground control.jpg" alt="Ground Control" style="height:56px;border-radius:8px;object-fit:cover;margin-left:auto;flex-shrink:0">
   </header>
 
   <!-- File sources strip -->
