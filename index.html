@@ -117,6 +117,8 @@ td.td-muted{color:var(--muted)}
 .loading{text-align:center;padding:70px 24px;color:var(--muted)}
 .spinner{width:30px;height:30px;border:2px solid rgba(124,58,237,0.2);border-top-color:#7c3aed;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes rocket{0%,100%{transform:translateY(0) rotate(-45deg)}50%{transform:translateY(-10px) rotate(-45deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 .err{color:#f87171}
 
 /* Clickable cells */
@@ -399,6 +401,7 @@ function isExpiringSoon(v){
 
 // ── Init ───────────────────────────────────────────────────────────────
 async function init(){
+  showLoading();
   // Always fetch portfolio + UCR fresh (they are committed to the repo).
   // Only restore Jira from cache (user-uploaded, not in repo).
   var jiraRows=[], fns={portfolio:'Mission_Portfolio.xlsx',ucr:'Use Cases.csv',jira:''};
@@ -424,14 +427,12 @@ async function init(){
         loadExcel('Mission_Portfolio.xlsx'),
         Promise.resolve(ucrRows)
       ]);
-      // Try fetching Jira from repo only if not already in cache
-      if(!jiraRows.length){
-        try{
-          var jr=await fetch('Jira_Validation.xls');
-          if(jr.ok){jiraRows=parseJiraExcel(await jr.arrayBuffer());VAL_MAP=parseJira(jiraRows);}
-        }catch(e2){}
-      }
-      fns={portfolio:'Mission_Portfolio.xlsx',ucr:ucrName,jira:jiraRows.length?fns.jira||'Jira_Validation.xls':''};
+      // Always fetch Jira fresh from repo (user-uploaded cache is overridden by repo version)
+      try{
+        var jr=await fetch('Jira_Validation.xls');
+        if(jr.ok){jiraRows=parseJiraExcel(await jr.arrayBuffer());VAL_MAP=parseJira(jiraRows);}
+      }catch(e2){}
+      fns={portfolio:'Mission_Portfolio.xlsx',ucr:ucrName,jira:jiraRows.length?'Jira_Validation.xls':''};
       saveCache(null,null,jiraRows,fns);
       renderFileSources(fns);
       processData(results[0],results[1]);
@@ -453,6 +454,17 @@ function clearCache(){
   ['fStatus','fCategory','fMonth','fCompany','fAuthor'].forEach(function(id){document.getElementById(id).value='';});
   renderFileSources({});
   showNoData();
+}
+
+function showLoading(){
+  var msgs=['Counting missions…','Wrangling spreadsheets…','Herding use cases…','Asking the portfolio nicely…','Bribing the CSV…','Launching rockets 🚀','Untangling Excel formulas…','Almost there… probably.'];
+  var msg=msgs[Math.floor(Math.random()*msgs.length)];
+  document.getElementById('tableArea').innerHTML=
+    '<div class="loading">'
+    +'<div style="font-size:2.8rem;animation:rocket 1s ease-in-out infinite;display:inline-block;margin-bottom:12px">🚀</div>'
+    +'<div style="font-size:1rem;font-weight:600;color:#a78bfa;margin-bottom:6px;animation:blink 1.4s ease-in-out infinite">'+msg+'</div>'
+    +'<div style="font-size:.75rem;color:#475569">Loading data files, please hold…</div>'
+    +'</div>';
 }
 
 function showNoData(){
