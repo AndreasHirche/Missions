@@ -402,8 +402,6 @@ function isExpiringSoon(v){
 // ── Init ───────────────────────────────────────────────────────────────
 async function init(){
   showLoading();
-  // Always fetch portfolio + UCR fresh (they are committed to the repo).
-  // Only restore Jira from cache (user-uploaded, not in repo).
   var jiraRows=[], fns={portfolio:'Mission_Portfolio.xlsx',ucr:'Use Cases.csv',jira:''};
   try{
     var cached=localStorage.getItem('missions_cache_v4');
@@ -413,36 +411,29 @@ async function init(){
       if(data.fileNames&&data.fileNames.jira)fns.jira=data.fileNames.jira;
     }
   }catch(e){}
-  if(location.protocol!=='file:'){
+  try{
+    var ucrRows, ucrName;
     try{
-      var ucrRows, ucrName;
-      try{
-        ucrRows=await loadExcel('Use Cases.xlsx');
-        ucrName='Use Cases.xlsx';
-      }catch(e3){
-        ucrRows=await loadCSV('Use Cases.csv');
-        ucrName='Use Cases.csv';
-      }
-      var results=await Promise.all([
-        loadExcel('Mission_Portfolio.xlsx'),
-        Promise.resolve(ucrRows)
-      ]);
-      // Always fetch Jira fresh from repo (user-uploaded cache is overridden by repo version)
-      try{
-        var jr=await fetch('Jira_Validation.xls');
-        if(jr.ok){jiraRows=parseJiraExcel(await jr.arrayBuffer());VAL_MAP=parseJira(jiraRows);}
-      }catch(e2){}
-      fns={portfolio:'Mission_Portfolio.xlsx',ucr:ucrName,jira:jiraRows.length?'Jira_Validation.xls':''};
-      saveCache(null,null,jiraRows,fns);
-      renderFileSources(fns);
-      processData(results[0],results[1]);
-      return;
-    }catch(e){
-      console.error('init fetch failed',e);
-      document.getElementById('tableArea').innerHTML='<div class="loading"><div class="err">😬 Failed to load data: '+escHtml(String(e))+'</div><div style="margin-top:8px;font-size:.75rem;color:#475569">Try the ↺ buttons above to load files manually.</div></div>';
+      ucrRows=await loadExcel('Use Cases.xlsx');
+      ucrName='Use Cases.xlsx';
+    }catch(e3){
+      ucrRows=await loadCSV('Use Cases.csv');
+      ucrName='Use Cases.csv';
     }
+    var portfolio=await loadExcel('Mission_Portfolio.xlsx');
+    try{
+      var jr=await fetch('Jira_Validation.xls');
+      if(jr.ok){jiraRows=parseJiraExcel(await jr.arrayBuffer());VAL_MAP=parseJira(jiraRows);}
+    }catch(e2){}
+    fns={portfolio:'Mission_Portfolio.xlsx',ucr:ucrName,jira:jiraRows.length?'Jira_Validation.xls':''};
+    saveCache(null,null,jiraRows,fns);
+    renderFileSources(fns);
+    processData(portfolio,ucrRows);
+    return;
+  }catch(e){
+    console.error('init fetch failed',e);
+    document.getElementById('tableArea').innerHTML='<div class="loading"><div class="err">😬 Failed to load data: '+escHtml(String(e))+'</div><div style="margin-top:8px;font-size:.75rem;color:#475569">Try the ↺ buttons above to load files manually.</div></div>';
   }
-  showNoData();
 }
 
 function saveCache(portfolio,ucr,jira,fns){
