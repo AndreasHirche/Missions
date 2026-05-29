@@ -415,10 +415,13 @@ async function init(){
     document.getElementById('tableArea').innerHTML=
       '<div class="loading">'
       +'<div style="font-size:2rem;margin-bottom:10px">📂</div>'
-      +'<div style="font-size:.95rem;font-weight:600;color:#a78bfa;margin-bottom:8px">Opened as local file</div>'
-      +'<div style="font-size:.8rem;color:#64748b;line-height:1.6">Browsers block file loading from <code style="color:#94a3b8">file://</code>.<br>'
-      +'Use the <b style="color:#e2e8f0">↺ buttons above</b> to load files manually,<br>'
-      +'or open via <a href="https://andreasHirche.github.io/Missions/" target="_blank" style="color:#a78bfa">GitHub Pages</a> for auto-loading.</div>'
+      +'<div style="font-size:.95rem;font-weight:600;color:#a78bfa;margin-bottom:8px">Local file — please load data manually</div>'
+      +'<div style="font-size:.8rem;color:#64748b;line-height:1.9">'
+      +'<b style="color:#e2e8f0">1.</b> Click <b style="color:#e2e8f0">Mission_Portfolio.xlsx ↺</b> above and pick the file<br>'
+      +'<b style="color:#e2e8f0">2.</b> Click <b style="color:#e2e8f0">Use Cases.csv ↺</b> above and pick the file<br>'
+      +'<b style="color:#e2e8f0">3.</b> Optionally load Jira validation via the third ↺<br>'
+      +'<span style="color:#475569">Or open via <a href="https://AndreasHirche.github.io/Missions/" target="_blank" style="color:#a78bfa">GitHub Pages</a> for full auto-loading.</span>'
+      +'</div>'
       +'</div>';
     return;
   }
@@ -570,34 +573,38 @@ async function handleFileUpdate(which){
   var input=document.getElementById('fsu-'+which);
   if(!input.files.length)return;
   var f=input.files[0];
+  showLoading();
   try{
     var cached=JSON.parse(localStorage.getItem('missions_cache_v4')||'{}');
     if(!cached.fileNames)cached.fileNames={};
-    if(which==='portfolio'||which==='ucr'){
-      // For manually uploaded portfolio/UCR: parse the file, store in a session var, re-render
-      // (not cached to localStorage — too large)
-      var rows;
-      if(which==='ucr'&&f.name.toLowerCase().endsWith('.csv')){
+    if(which==='portfolio'){
+      _manualPortfolio=parseExcel(await readFileAsBuffer(f));
+      cached.fileNames.portfolio=f.name;
+    }else if(which==='ucr'){
+      if(f.name.toLowerCase().endsWith('.csv')){
         var wb=XLSX.read(await f.text(),{type:'string',cellDates:true});
-        rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+        _manualUCR=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
       }else{
-        rows=parseExcel(await readFileAsBuffer(f));
+        _manualUCR=parseExcel(await readFileAsBuffer(f));
       }
-      if(which==='portfolio')_manualPortfolio=rows; else _manualUCR=rows;
-      cached.fileNames[which]=f.name;
-      localStorage.setItem('missions_cache_v4',JSON.stringify({jira:cached.jira||[],fileNames:cached.fileNames}));
-      renderFileSources(cached.fileNames);
-      var port=_manualPortfolio||null, ucr=_manualUCR||null;
-      if(port&&ucr)processData(port,ucr);
+      cached.fileNames.ucr=f.name;
     }else if(which==='jira'){
       var jiraRows=parseJiraExcel(await readFileAsBuffer(f));
       if(jiraRows&&jiraRows.length){VAL_MAP=parseJira(jiraRows);}
       cached.jira=jiraRows;
-      cached.fileNames[which]=f.name;
+      cached.fileNames.jira=f.name;
       try{localStorage.setItem('missions_cache_v4',JSON.stringify({jira:jiraRows,fileNames:cached.fileNames}));}catch(e){}
-      renderFileSources(cached.fileNames);
-      // re-render with fresh portfolio+UCR from server
-      init();
+    }
+    localStorage.setItem('missions_cache_v4',JSON.stringify({jira:cached.jira||[],fileNames:cached.fileNames}));
+    renderFileSources(cached.fileNames);
+    if(_manualPortfolio&&_manualUCR){
+      processData(_manualPortfolio,_manualUCR);
+    }else{
+      document.getElementById('tableArea').innerHTML=
+        '<div class="loading"><div style="font-size:.85rem;color:#475569">'
+        +(!_manualPortfolio?'⬆ Load <b>Mission_Portfolio.xlsx</b> first<br>':'')
+        +(!_manualUCR?'⬆ Load <b>Use Cases.csv</b> to continue':'')
+        +'</div></div>';
     }
   }catch(e){alert('Failed to load '+f.name+': '+e.message);}
   input.value='';
