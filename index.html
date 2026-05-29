@@ -255,6 +255,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+window.addEventListener('DOMContentLoaded',function(){init();});
 // ── Particles ──────────────────────────────────────────────────────────
 (function(){
   var pc=document.getElementById('particles');
@@ -437,7 +438,10 @@ async function init(){
       renderFileSources(fns);
       processData(results[0],results[1]);
       return;
-    }catch(e){console.error('init fetch failed',e);}
+    }catch(e){
+      console.error('init fetch failed',e);
+      document.getElementById('tableArea').innerHTML='<div class="loading"><div class="err">😬 Failed to load data: '+escHtml(String(e))+'</div><div style="margin-top:8px;font-size:.75rem;color:#475569">Try the ↺ buttons above to load files manually.</div></div>';
+    }
   }
   showNoData();
 }
@@ -1251,7 +1255,7 @@ document.addEventListener('click',function(e){
 });
 
 // Start
-init();
+
 </script>
 </body>
 </html>
