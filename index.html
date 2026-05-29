@@ -182,7 +182,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
       <input type="file" id="fsu-portfolio" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpdate('portfolio')">
     </div>
     <div class="file-src" id="fsr-ucr" onclick="triggerFileUpdate('ucr')" title="Click to reload from file">
-      <span class="file-src-name" id="fsn-ucr">Use Cases.csv</span>
+      <span class="file-src-name" id="fsn-ucr">Use Cases.xlsx</span>
       <span class="file-src-btn">↺</span>
       <input type="file" id="fsu-ucr" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileUpdate('ucr')">
     </div>
@@ -409,16 +409,25 @@ async function init(){
   }catch(e){}
   if(location.protocol!=='file:'){
     try{
+      // Try Use Cases.xlsx first, fall back to .csv
+      var ucrRows, ucrName;
+      try{
+        ucrRows=await loadExcel('Use Cases.xlsx');
+        ucrName='Use Cases.xlsx';
+      }catch(e3){
+        ucrRows=await loadCSV('Use Cases.csv');
+        ucrName='Use Cases.csv';
+      }
       var results=await Promise.all([
         loadExcel('Mission_Portfolio.xlsx'),
-        loadCSV('Use Cases.csv')
+        Promise.resolve(ucrRows)
       ]);
       var jiraRows=[];
       try{
         var jr=await fetch('Jira_Validation.xls');
         if(jr.ok){jiraRows=parseJiraExcel(await jr.arrayBuffer());VAL_MAP=parseJira(jiraRows);}
       }catch(e2){}
-      var fns={portfolio:'Mission_Portfolio.xlsx',ucr:'Use Cases.csv',jira:jiraRows.length?'Jira_Validation.xls':''};
+      var fns={portfolio:'Mission_Portfolio.xlsx',ucr:ucrName,jira:jiraRows.length?'Jira_Validation.xls':''};
       saveCache(results[0],results[1],jiraRows,fns);
       renderFileSources(fns);
       processData(results[0],results[1]);
@@ -528,7 +537,7 @@ function renderFileSources(fns){
       nameEl.textContent=fns[k];
       chip.classList.remove('unloaded');
     }else{
-      nameEl.textContent=k==='jira'?'Jira (not loaded)':k==='ucr'?'Use Cases.csv':'Mission_Portfolio.xlsx';
+      nameEl.textContent=k==='jira'?'Jira (not loaded)':k==='ucr'?'Use Cases.xlsx':'Mission_Portfolio.xlsx';
       chip.classList.add('unloaded');
     }
   });
