@@ -411,6 +411,17 @@ async function init(){
       if(data.fileNames&&data.fileNames.jira)fns.jira=data.fileNames.jira;
     }
   }catch(e){}
+  if(location.protocol==='file:'){
+    document.getElementById('tableArea').innerHTML=
+      '<div class="loading">'
+      +'<div style="font-size:2rem;margin-bottom:10px">📂</div>'
+      +'<div style="font-size:.95rem;font-weight:600;color:#a78bfa;margin-bottom:8px">Opened as local file</div>'
+      +'<div style="font-size:.8rem;color:#64748b;line-height:1.6">Browsers block file loading from <code style="color:#94a3b8">file://</code>.<br>'
+      +'Use the <b style="color:#e2e8f0">↺ buttons above</b> to load files manually,<br>'
+      +'or open via <a href="https://andreasHirche.github.io/Missions/" target="_blank" style="color:#a78bfa">GitHub Pages</a> for auto-loading.</div>'
+      +'</div>';
+    return;
+  }
   try{
     var ucrRows, ucrName;
     try{
