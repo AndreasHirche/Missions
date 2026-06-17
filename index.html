@@ -46,6 +46,8 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact header p{font-size:0.7rem}
 #top-panel.compact .file-sources{padding:2px 0 4px}
 #top-panel.compact .kg-tile .chart-inner{height:120px!important}
+/* KG compact: title + 120px chart = ~158px, matches cat+coach compact col */
+#top-panel.compact .kg-tile{height:auto}
 .img-status-col{overflow:hidden}
 #top-panel.compact .chart-card{padding:8px 16px}
 
@@ -79,6 +81,9 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 /* KG tile matches cat+coach height via align-self:stretch */
 .kg-tile,.img-status-col{align-self:stretch}
 .kg-tile{display:flex;flex-direction:column}
+/* Compact: all cols align-start, no stretching */
+#top-panel.compact .dashboard-main{align-items:start}
+#top-panel.compact .kg-tile,#top-panel.compact .img-status-col{align-self:auto}
 
 /* Compact */
 #top-panel.compact .cat-coach-col{flex-direction:row!important;gap:8px}
