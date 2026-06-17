@@ -23,7 +23,12 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel{background:var(--bg);z-index:10;overflow:hidden;transition:height .4s cubic-bezier(.4,0,.2,1);border-bottom:1px solid transparent;transition:height .4s cubic-bezier(.4,0,.2,1),border-color .3s}
 #top-panel.compact{border-color:var(--border)}
 /* Scroll area */
-#scroll-area{overflow:hidden}
+#scroll-area{overflow:hidden;display:flex;flex-direction:column}
+#scroll-area .wrap-table{flex:1;display:flex;flex-direction:column;padding:0 4px 4px;min-height:0}
+#scroll-area .table-toolbar{flex-shrink:0}
+#scroll-area .tbl-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
+#scroll-area .tbl-scroll{flex:1;overflow-x:scroll;overflow-y:auto;min-height:0}
+#scroll-area .pagination{flex-shrink:0}
 
 /* Compact tile adjustments — shrink chart areas, kpi labels, etc */
 #top-panel .kpis{transition:gap .4s}
@@ -1973,35 +1978,38 @@ document.addEventListener('DOMContentLoaded',function(){
   // Top panel compress on scroll
   var topPanel=document.getElementById('top-panel');
   var tblScroll=document.querySelector('.tbl-scroll');
+  var scrollArea=document.getElementById('scroll-area');
   var topFull=0, topCompact=0;
 
   function updateTableHeight(panelH){
-    var avail=window.innerHeight-(panelH||topFull)-4;
-    if(tblScroll) tblScroll.style.maxHeight=Math.max(120,avail)+'px';
+    var h=window.innerHeight-(panelH||topFull);
+    scrollArea.style.height=Math.max(80,h)+'px';
     document.documentElement.style.setProperty('--top-h',(panelH||topFull)+'px');
   }
 
   function setCompact(compact){
+    // Suppress transition while measuring
+    topPanel.style.transition='none';
     if(compact){
       topPanel.classList.add('compact');
-      // measure synchronously — no rAF — before any transition runs
+      topPanel.style.height='';
       topCompact=topPanel.offsetHeight;
       topPanel.style.height=topCompact+'px';
-      updateTableHeight(topCompact);
     } else {
       topPanel.classList.remove('compact');
       topPanel.style.height=topFull+'px';
-      updateTableHeight(topFull);
     }
+    // Re-enable transition after layout
+    topPanel.offsetHeight; // force reflow
+    topPanel.style.transition='';
+    updateTableHeight(topPanel.classList.contains('compact')?topCompact:topFull);
   }
 
   function measureTop(){
     var wasCompact=topPanel.classList.contains('compact');
     topPanel.classList.remove('compact');
     topPanel.style.height='';
-    // suppress transition while measuring so offsetHeight is stable
     topPanel.style.transition='none';
-    // offsetHeight (not scrollHeight) — unaffected by overflow
     topFull=topPanel.offsetHeight;
     topPanel.style.transition='';
     if(wasCompact){
