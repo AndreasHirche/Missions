@@ -223,8 +223,8 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
           <span>Knowledge Graph</span>
           <span style="font-size:0.7rem;color:#7c3aed;font-weight:600">⛶ Fullscreen</span>
         </div>
-        <div class="chart-inner" id="kgPreview" style="position:relative;overflow:hidden;background:#060a12;border-radius:8px">
-          <svg id="kgMiniSvg" width="100%" height="100%" style="display:block"></svg>
+        <div class="chart-inner" id="kgPreview" style="position:relative;overflow:hidden;background:#060a12;border-radius:8px;min-width:0">
+          <svg id="kgMiniSvg" style="position:absolute;inset:0;width:100%;height:100%;display:block"></svg>
           <div id="kgTileBadge" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;pointer-events:none">
             <div style="font-size:0.7rem;color:#a78bfa;font-weight:600;text-shadow:0 0 8px #0a0f1e" id="kgTileLabel">Loading…</div>
           </div>
@@ -265,8 +265,11 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 <div id="colFilterDrop" style="position:fixed;z-index:300;background:#1a1a2e;border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:4px;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:none"></div>
 
 <!-- Scripts loaded in order: XLSX first, then Chart.js, then app -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
 <script>
 // ── Particles ──────────────────────────────────────────────────────────
 (function(){
@@ -1381,9 +1384,6 @@ init();
 .kg-ld{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 </style>
 
-<script src="https://d3js.org/d3.v7.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
 <script>
 // ── Knowledge Graph ─────────────────────────────────────────────────────────
 var KG = (function(){
@@ -1482,10 +1482,19 @@ var KG = (function(){
   function renderMini(){
     var svgEl=document.getElementById('kgMiniSvg');
     if(!svgEl||!allNodes.length)return;
-    var parent=svgEl.parentElement;
-    var W=parent.clientWidth, H=parent.clientHeight;
-    // If not laid out yet, retry
-    if(W<10||H<10){ setTimeout(renderMini,300); return; }
+    var rect=svgEl.parentElement.getBoundingClientRect();
+    var W=Math.round(rect.width), H=Math.round(rect.height);
+    if(W<20||H<20){
+      // Not laid out yet — observe until visible
+      if(window.ResizeObserver){
+        var ro=new ResizeObserver(function(entries){
+          var r=entries[0].contentRect;
+          if(r.width>20&&r.height>20){ro.disconnect();renderMini();}
+        });
+        ro.observe(svgEl.parentElement);
+      } else { setTimeout(renderMini,500); }
+      return;
+    }
     svgEl.setAttribute('width',W); svgEl.setAttribute('height',H);
     var mini=d3.select('#kgMiniSvg').attr('viewBox','0 0 '+W+' '+H);
     mini.selectAll('*').remove();
@@ -1750,7 +1759,9 @@ var KG = (function(){
       var scene=graph3d.scene&&graph3d.scene();
       if(!scene){ if(++_rocketInit<30)setTimeout(tryAddRocket,200); return; }
       try{
-        var T=THREE;
+        // THREE is bundled inside 3d-force-graph — access via graph renderer
+        var T=graph3d.renderer&&graph3d.renderer().info?THREE:(window.THREE||null);
+        if(!T){console.warn('THREE not available'); return;}
         var M=T.MeshBasicMaterial;
         var rocket=new T.Group();
         // body
