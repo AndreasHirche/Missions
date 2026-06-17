@@ -46,7 +46,10 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact .file-sources{padding:2px 0 4px}
 #top-panel.compact .dashboard-main{margin-bottom:4px}
 #top-panel.compact .kg-tile .chart-inner{height:120px!important}
-#top-panel.compact .col-stack img{height:80px!important}
+.img-status-col{overflow:visible}
+.img-status-col img{height:200px}
+#top-panel.compact .img-status-col img{height:60px!important}
+#top-panel.compact .img-status-col .chart-card{flex-shrink:0}
 #top-panel.compact .chart-card{padding:8px 16px}
 
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);flex:1;display:flex;flex-direction:column;
@@ -298,8 +301,8 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
     </div>
 
     <!-- Col 4: Image + Status stacked -->
-    <div class="col-stack" style="overflow:hidden">
-      <img src="ground control.jpg" alt="Ground Control" style="height:200px;width:100%;border-radius:12px;object-fit:cover;object-position:top;flex-shrink:0">
+    <div class="col-stack img-status-col">
+      <img id="gcImg" src="ground control.jpg" alt="Ground Control" style="border-radius:12px;object-fit:cover;object-position:top;flex-shrink:0;width:100%">
       <div class="chart-card" style="flex-shrink:0">
         <div class="chart-title">Status Distribution</div>
         <div class="chart-inner"><canvas id="statusChart"></canvas></div>
