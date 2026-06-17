@@ -46,9 +46,8 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact .file-sources{padding:2px 0 4px}
 #top-panel.compact .dashboard-main{margin-bottom:4px}
 #top-panel.compact .kg-tile .chart-inner{height:120px!important}
-.img-status-col{overflow:visible}
-.img-status-col img{height:200px}
-#top-panel.compact .img-status-col img{height:60px!important}
+.img-status-col{overflow:hidden}
+#top-panel.compact .img-status-col img{min-height:40px!important}
 #top-panel.compact .img-status-col .chart-card{flex-shrink:0}
 #top-panel.compact .chart-card{padding:8px 16px}
 
@@ -101,10 +100,14 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 
 /* Charts panel — now direct children of dashboard-main */
 .charts{display:contents}
-.col-stack{display:flex;flex-direction:column;gap:12px}
-.chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:16px;overflow:hidden;flex-shrink:0}
+.col-stack{display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:16px;flex-shrink:0}
 .chart-title{font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
-.chart-inner{position:relative;height:200px;overflow:hidden;flex-shrink:0}
+.chart-inner{position:relative;height:200px;overflow:hidden}
+/* img+status col: image gets remaining space, status is fixed */
+.img-status-col{overflow:hidden}
+.img-status-col img{height:0;flex:1;min-height:80px;object-fit:cover;object-position:top;border-radius:12px;width:100%}
+.img-status-col .chart-card{flex-shrink:0}
 
 /* Filters */
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
@@ -302,7 +305,7 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
 
     <!-- Col 4: Image + Status stacked -->
     <div class="col-stack img-status-col">
-      <img id="gcImg" src="ground control.jpg" alt="Ground Control" style="border-radius:12px;object-fit:cover;object-position:top;flex-shrink:0;width:100%">
+      <img id="gcImg" src="ground control.jpg" alt="Ground Control">
       <div class="chart-card" style="flex-shrink:0">
         <div class="chart-title">Status Distribution</div>
         <div class="chart-inner"><canvas id="statusChart"></canvas></div>
