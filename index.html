@@ -20,10 +20,10 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 ::-webkit-scrollbar-corner{background:transparent}
 
 /* Top panel */
-#top-panel{background:var(--bg);z-index:10;overflow:hidden;
-  transition:height .4s cubic-bezier(.4,0,.2,1)}
+#top-panel{background:var(--bg);z-index:10;overflow:hidden;transition:height .4s cubic-bezier(.4,0,.2,1)}
+#top-panel .wrap{transition:transform .4s cubic-bezier(.4,0,.2,1);transform-origin:top center}
+#top-panel.compact .wrap{transform:scaleY(0.5)}
 #top-panel.compact{border-bottom:1px solid var(--border)}
-
 /* Scroll area */
 #scroll-area{overflow:hidden}
 
@@ -85,11 +85,12 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 
 /* Table */
 .tbl-wrap{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px)}
-.tbl-scroll{overflow:scroll;scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05);
-  max-height:calc(100vh - var(--top-h) - 80px)}
+.tbl-scroll{overflow-x:scroll;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 .tbl-scroll::-webkit-scrollbar{height:7px;width:7px}
 .tbl-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,0.03);border-radius:0 0 12px 12px}
 .tbl-scroll::-webkit-scrollbar-thumb{background:#7c3aed;border-radius:4px}
+.tbl-scroll::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
+.tbl-scroll::-webkit-scrollbar-corner{background:rgba(255,255,255,0.03)}
 .tbl-scroll::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
 .tbl-scroll::-webkit-scrollbar-corner{background:rgba(255,255,255,0.03)}
 table{width:100%;border-collapse:collapse;font-size:0.81rem;min-width:600px}
@@ -186,7 +187,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.179.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
 </head>
 <body>
@@ -198,31 +199,31 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
   <header class="fade-in">
     <div class="header-brand">
       <h1>Missions Dashboard</h1>
-      <p>SAP Discovery Center · Mission Portfolio &amp; UCR Status</p>
+      <p style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="color:var(--muted);font-size:0.82rem">SAP Discovery Center</span>
+        <span style="color:#334155">·</span>
+        <span class="file-src" id="fsr-portfolio" onclick="triggerFileUpdate('portfolio')" title="Click to reload" style="padding:1px 8px 1px 10px;border-radius:12px;font-size:0.72rem">
+          <span class="file-src-name" id="fsn-portfolio">Mission_Portfolio.xlsx</span>
+          <span class="file-src-btn">↺</span>
+          <input type="file" id="fsu-portfolio" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpdate('portfolio')">
+        </span>
+        <span class="file-src" id="fsr-ucr" onclick="triggerFileUpdate('ucr')" title="Click to reload" style="padding:1px 8px 1px 10px;border-radius:12px;font-size:0.72rem">
+          <span class="file-src-name" id="fsn-ucr">Use Cases.csv</span>
+          <span class="file-src-btn">↺</span>
+          <input type="file" id="fsu-ucr" accept=".csv" style="display:none" onchange="handleFileUpdate('ucr')">
+        </span>
+        <span class="file-src unloaded" id="fsr-jira" onclick="triggerFileUpdate('jira')" title="Click to load Jira" style="padding:1px 8px 1px 10px;border-radius:12px;font-size:0.72rem">
+          <span class="file-src-name" id="fsn-jira">Jira</span>
+          <span class="file-src-btn">↺</span>
+          <input type="file" id="fsu-jira" accept=".xls,.xlsx" style="display:none" onchange="handleFileUpdate('jira')">
+        </span>
+      </p>
     </div>
     <div class="header-search">
       <input type="text" id="search" placeholder="Search name, author, tags, ID…" oninput="applyFilters()">
     </div>
   </header>
 
-  <!-- File sources strip -->
-  <div class="file-sources" id="fileSources">
-    <div class="file-src" id="fsr-portfolio" onclick="triggerFileUpdate('portfolio')" title="Click to reload from file">
-      <span class="file-src-name" id="fsn-portfolio">Mission_Portfolio.xlsx</span>
-      <span class="file-src-btn">↺</span>
-      <input type="file" id="fsu-portfolio" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpdate('portfolio')">
-    </div>
-    <div class="file-src" id="fsr-ucr" onclick="triggerFileUpdate('ucr')" title="Click to reload from file">
-      <span class="file-src-name" id="fsn-ucr">Use Cases.csv</span>
-      <span class="file-src-btn">↺</span>
-      <input type="file" id="fsu-ucr" accept=".csv" style="display:none" onchange="handleFileUpdate('ucr')">
-    </div>
-    <div class="file-src unloaded" id="fsr-jira" onclick="triggerFileUpdate('jira')" title="Click to load Jira validation file">
-      <span class="file-src-name" id="fsn-jira">Jira (not loaded)</span>
-      <span class="file-src-btn">↺</span>
-      <input type="file" id="fsu-jira" accept=".xls,.xlsx" style="display:none" onchange="handleFileUpdate('jira')">
-    </div>
-  </div><!-- /.file-sources -->
 
   <!-- KPI sidebar + Charts -->
   <div class="dashboard-main fade-in" style="animation-delay:.05s">
@@ -1152,7 +1153,7 @@ function setSort(col){
 
 // ── Table ──────────────────────────────────────────────────────────────
 var COLS=[
-  {key:'Mission Name',label:'Mission',tdClass:'td-name',sortable:true},
+  {key:'Mission Name',label:'Mission',tdClass:'td-name',sortable:true,countId:'th-mission-count'},
   {key:'Authoring Company',label:'Company',sortable:true,tdClass:'td-muted',filterCol:'company'},
   {key:'Category',label:'Category',sortable:true,filterCol:'category'},
   {key:'_coach',label:'Coach',sortable:true,filterCol:'coach'},
@@ -1197,7 +1198,9 @@ function renderTable(){
     var thClick=c.sortable?' onclick="setSort(\''+c.key+'\')"':'';
     var icon=c.sortable?'<i class="sort-icon">'+(isActive?(sortDir===1?'↑':'↓'):'↕')+'</i>':'';
     var filterBtn=c.filterCol?'<button class="th-filter-btn'+(isFiltered?' active':'')+'" title="Filter" onclick="openColFilter(\''+c.filterCol+'\',this,event)">▾</button>':'';
-    html+='<th'+thClass+thClick+' style="position:relative">'+c.label+icon+filterBtn+'</th>';
+    html+='<th'+thClass+thClick+' style="position:relative">'
+      +(c.countId?'<span id="'+c.countId+'" style="opacity:0.5;font-weight:400;margin-right:4px"></span>':'')
+      +c.label+icon+filterBtn+'</th>';
   });
   html+='</tr></thead><tbody>';
 
@@ -1259,6 +1262,9 @@ function renderTable(){
 
   html+='</tbody></table>';
   document.getElementById('tableArea').innerHTML=html;
+  // Update mission count in column header
+  var thCount=document.getElementById('th-mission-count');
+  if(thCount) thCount.textContent=rows.length+' ·';
   document.getElementById('pagination').style.display='none';
 }
 
@@ -1394,6 +1400,7 @@ init();
     <div class="kg-li on" data-t="category"   onclick="kgToggleT(this)"><div class="kg-ld" style="background:#4ade80"></div>Category</div>
     <div class="kg-li on" data-t="coach"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#c084fc"></div>Coach</div>
     <div class="kg-li on" data-t="tag"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fbbf24"></div>Tag</div>
+    <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
     <div style="position:relative;display:inline-flex;align-items:center">
       <span style="position:absolute;left:8px;color:#475569;font-size:0.8rem;pointer-events:none">⌕</span>
@@ -1904,6 +1911,16 @@ var KG = (function(){
 function openKG(){ KG.open(); }
 function closeKG(){ KG.close(); }
 function kgSetMode(m){ KG.setMode(m); }
+function kgToggleAll(){
+  var els=document.querySelectorAll('.kg-li[data-t]');
+  var anyOff=[...els].some(e=>e.classList.contains('off'));
+  els.forEach(function(e){
+    if(anyOff){e.classList.remove('off');e.classList.add('on');}
+    else{e.classList.add('off');e.classList.remove('on');}
+    KG.toggleT&&KG._setVis(e.dataset.t,anyOff);
+  });
+  if(anyOff)KG.rebuild(); else KG.rebuild();
+}
 function kgToggleT(el){ KG.toggleT(el); }
 function kgOnSearch(){ KG.search(document.getElementById('kgSearch').value.toLowerCase().trim()); }
 function kgApplyF(){ KG.catFilter(document.getElementById('kgCatFilter').value); }
@@ -1935,7 +1952,10 @@ document.addEventListener('DOMContentLoaded',function(){
       topPanel.style.height=topFull+'px';
     }
     var panelH=parseInt(topPanel.style.height)||topFull;
-    if(tblScroll) tblScroll.style.maxHeight=Math.max(120,window.innerHeight-panelH-4)+'px';
+    // horizontal bar always visible — set tbl-scroll height so it fills rest of viewport
+    var paginH=document.getElementById('pagination').offsetHeight||40;
+    var toolbarH=document.querySelector('.table-toolbar')?.offsetHeight||24;
+    if(tblScroll) tblScroll.style.maxHeight=Math.max(120,window.innerHeight-panelH-paginH-toolbarH-12)+'px';
     document.documentElement.style.setProperty('--top-h',panelH+'px');
   }
 
