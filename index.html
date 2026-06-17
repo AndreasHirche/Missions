@@ -96,10 +96,9 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 /* Charts panel — now direct children of dashboard-main */
 .charts{display:contents}
 .col-stack{display:flex;flex-direction:column;gap:12px}
-.chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:16px}
+.chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:16px;overflow:hidden;flex-shrink:0}
 .chart-title{font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
-.chart-inner{position:relative;height:200px;overflow:hidden}
-.chart-inner canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
+.chart-inner{position:relative;height:200px;overflow:hidden;flex-shrink:0}
 
 /* Filters */
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
@@ -950,7 +949,7 @@ function renderCharts(){
       }]
     },
     options:{
-      responsive:false,maintainAspectRatio:false,cutout:'68%',
+      responsive:true,maintainAspectRatio:false,cutout:'68%',
       onClick:function(e,els){
         if(!els.length)return;
         var st=STATUS_ORDER[els[0].index];
@@ -989,7 +988,7 @@ function renderCharts(){
       }]
     },
     options:{
-      responsive:false,maintainAspectRatio:false,indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,indexAxis:'y',
       onClick:function(e,els){
         if(!els.length)return;
         var cat=catSorted[els[0].index][0];
@@ -1028,7 +1027,7 @@ function renderCharts(){
       }]
     },
     options:{
-      responsive:false,maintainAspectRatio:false,indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,indexAxis:'y',
       onClick:function(e,els){
         if(!els.length)return;
         var name=coachSorted[els[0].index][0];
