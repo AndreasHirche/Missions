@@ -1991,8 +1991,8 @@ document.addEventListener('DOMContentLoaded',function(){
     topPanel.style.transition='none';
     if(compact){
       topPanel.classList.add('compact');
-      topPanel.style.height=''; // let CSS rules define compact height
-      topPanel.offsetHeight;    // force reflow
+      topPanel.style.height='';
+      topPanel.offsetHeight;
       topCompact=topPanel.offsetHeight;
       topPanel.style.height=topCompact+'px';
       topPanel.offsetHeight;
@@ -2000,7 +2000,7 @@ document.addEventListener('DOMContentLoaded',function(){
       updateTableHeight(topCompact);
     } else {
       topPanel.classList.remove('compact');
-      topPanel.style.height=topFull+'px';
+      topPanel.style.height=topFull+'px'; // always use frozen topFull
       topPanel.offsetHeight;
       topPanel.style.transition='';
       updateTableHeight(topFull);
@@ -2008,17 +2008,16 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   function measureTop(){
-    if(topPanel.classList.contains('compact')) return; // never re-measure while compact
-    var prev=topPanel.style.height;
+    if(measured) return;
+    if(topPanel.classList.contains('compact')) return;
     topPanel.style.transition='none';
-    topPanel.style.height=''; // auto — measure natural height
+    topPanel.style.height='';
     topPanel.offsetHeight;
     var h=topPanel.offsetHeight;
-    if(h>0) topFull=h;        // only update if valid
+    if(h>50){ topFull=h; measured=true; }
     topPanel.style.height=topFull+'px';
     topPanel.offsetHeight;
     topPanel.style.transition='';
-    measured=true;
     updateTableHeight(topFull);
   }
 
