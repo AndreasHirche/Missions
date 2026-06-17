@@ -47,8 +47,6 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact .dashboard-main{margin-bottom:4px}
 #top-panel.compact .kg-tile .chart-inner{height:120px!important}
 .img-status-col{overflow:hidden}
-#top-panel.compact .img-status-col img{min-height:40px!important}
-#top-panel.compact .img-status-col .chart-card{flex-shrink:0}
 #top-panel.compact .chart-card{padding:8px 16px}
 
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);flex:1;display:flex;flex-direction:column;
@@ -81,9 +79,12 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 
 /* Compact: tiles side-by-side, full width, equal columns */
 #top-panel.compact .dashboard-main{grid-template-columns:auto 1fr 1.4fr 1fr;gap:8px;margin-bottom:4px}
-#top-panel.compact .col-stack{flex-direction:row!important;gap:8px;min-width:0}
-#top-panel.compact .col-stack .chart-card{flex:1;min-width:0}
-#top-panel.compact .col-stack img{max-height:100%!important;height:auto;width:auto;min-width:0;flex:0 0 auto}
+/* Category+Coach col: side by side */
+#top-panel.compact .cat-coach-col{flex-direction:row!important;gap:8px}
+#top-panel.compact .cat-coach-col .chart-card{flex:1;min-width:0}
+/* img+status col: stays column, just smaller */
+#top-panel.compact .img-status-col img{min-height:30px!important;flex:1}
+#top-panel.compact .img-status-col .chart-card{flex-shrink:0}
 
 /* KPI sidebar - vertical, fills chart height */
 .kpis{display:flex;flex-direction:column;gap:8px}
@@ -106,10 +107,8 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .chart-inner{position:relative;height:200px;overflow:hidden}
 /* img+status col: image gets remaining space, status is fixed */
 .img-status-col{overflow:hidden}
-.img-status-col img{height:0;flex:1;min-height:80px;object-fit:cover;object-position:top;border-radius:12px;width:100%}
+.img-status-col img{flex:1;min-height:80px;object-fit:cover;object-position:top;border-radius:12px;width:100%}
 .img-status-col .chart-card{flex-shrink:0}
-
-/* Filters */
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
 .filters select{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 14px;font-family:'Inter',sans-serif;font-size:0.82rem;outline:none;transition:border-color .2s}
 .filters select:focus{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.05)}
@@ -278,7 +277,7 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
     </div>
 
     <!-- Col 2: Category + Coach stacked -->
-    <div class="col-stack fade-in" style="animation-delay:.1s">
+    <div class="col-stack cat-coach-col fade-in" style="animation-delay:.1s">
       <div class="chart-card" style="display:flex;flex-direction:column">
         <div class="chart-title">Missions by Category <span style="font-size:.62rem;font-weight:400;color:#475569;margin-left:6px">click to filter</span></div>
         <div class="chart-inner"><canvas id="categoryChart"></canvas></div>
