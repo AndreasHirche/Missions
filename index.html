@@ -38,7 +38,7 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact .kpis{gap:4px}
 #top-panel.compact .kpi-val{font-size:1rem!important}
 #top-panel.compact .kpi-lbl{font-size:0.5rem!important}
-#top-panel.compact .chart-inner{height:120px!important}
+#top-panel.compact .chart-inner{height:80px!important}
 #top-panel.compact .chart-title{margin-bottom:4px;font-size:0.62rem}
 #top-panel.compact header{padding-top:6px;margin-bottom:6px}
 #top-panel.compact header h1{font-size:1.1rem}
@@ -81,7 +81,6 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 /* Compact */
 #top-panel.compact .cat-coach-col{flex-direction:row!important;gap:8px}
 #top-panel.compact .cat-coach-col .chart-card{flex:1;min-width:0}
-#top-panel.compact .img-status-col img{min-height:30px!important}
 #top-panel.compact .img-status-col .chart-card{flex-shrink:0}
 
 /* KPI sidebar - vertical, fills chart height */
@@ -102,11 +101,11 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .col-stack{display:flex;flex-direction:column;gap:12px;overflow:hidden}
 .chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:16px;flex-shrink:0}
 .chart-title{font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
-.chart-inner{position:relative;height:200px;overflow:hidden}
+.chart-inner{position:relative;height:160px;overflow:hidden}
 /* img+status col: image gets remaining space, status is fixed */
-.img-status-col{overflow:hidden}
-.img-status-col img{flex:1;min-height:80px;object-fit:cover;object-position:top;border-radius:12px;width:100%}
-.img-status-col .chart-card{flex-shrink:0}
+.img-status-col{overflow:hidden;flex-direction:row!important;gap:12px}
+.img-status-col img{flex:1;min-width:0;object-fit:cover;object-position:top;border-radius:12px}
+.img-status-col .chart-card{flex:1;min-width:0;flex-shrink:0}
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
 .filters select{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 14px;font-family:'Inter',sans-serif;font-size:0.82rem;outline:none;transition:border-color .2s}
 .filters select:focus{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.05)}
