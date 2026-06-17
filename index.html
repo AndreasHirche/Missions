@@ -50,10 +50,15 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .header-search input:focus{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.05)}
 .result-count{font-size:0.75rem;color:var(--muted);white-space:nowrap}
 
-/* Dashboard main: KPI sidebar + charts */
-.dashboard-main{display:grid;grid-template-columns:140px 1fr 1.4fr auto;gap:12px;margin-bottom:8px;align-items:stretch}
+/* Dashboard grid — normal: KPIs | Cat+Coach | KG | Img+Status */
+.dashboard-main{display:grid;grid-template-columns:140px 1fr 1.4fr auto;gap:12px;margin-bottom:8px;align-items:stretch;transition:grid-template-columns .4s}
 @media(max-width:1100px){.dashboard-main{grid-template-columns:140px 1fr 1fr}}
 @media(max-width:700px){.dashboard-main{grid-template-columns:1fr}}
+
+/* Compact layout: KPIs | Cat Coach | KG | Img Status  — stacked → side-by-side */
+#top-panel.compact .col-stack{flex-direction:row!important}
+#top-panel.compact .col-stack .chart-card{flex:1;min-width:0}
+#top-panel.compact .col-stack img{max-height:none;height:100%;max-height:100px}
 
 /* KPI sidebar - vertical, fills chart height */
 .kpis{display:flex;flex-direction:column;gap:8px}
