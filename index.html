@@ -44,7 +44,6 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact header h1{font-size:1.1rem}
 #top-panel.compact header p{font-size:0.7rem}
 #top-panel.compact .file-sources{padding:2px 0 4px}
-#top-panel.compact .dashboard-main{margin-bottom:4px}
 #top-panel.compact .kg-tile .chart-inner{height:120px!important}
 .img-status-col{overflow:hidden}
 #top-panel.compact .chart-card{padding:8px 16px}
@@ -72,18 +71,15 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .header-search input:focus{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.05)}
 .result-count{font-size:0.75rem;color:var(--muted);white-space:nowrap}
 
-/* Dashboard grid — normal: KPIs | Cat+Coach | KG | Img+Status */
-.dashboard-main{display:grid;grid-template-columns:140px 1fr 1.4fr auto;gap:12px;margin-bottom:8px;align-items:stretch;transition:grid-template-columns .4s}
-@media(max-width:1100px){.dashboard-main{grid-template-columns:140px 1fr 1fr}}
-@media(max-width:700px){.dashboard-main{grid-template-columns:1fr}}
+/* Dashboard grid — 3 equal columns: Cat+Coach | KG | Img+Status */
+.dashboard-main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;align-items:stretch}
+@media(max-width:900px){.dashboard-main{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.dashboard-main{grid-template-columns:1fr}}
 
-/* Compact: tiles side-by-side, full width, equal columns */
-#top-panel.compact .dashboard-main{grid-template-columns:auto 1fr 1.4fr 1fr;gap:8px;margin-bottom:4px}
-/* Category+Coach col: side by side */
+/* Compact */
 #top-panel.compact .cat-coach-col{flex-direction:row!important;gap:8px}
 #top-panel.compact .cat-coach-col .chart-card{flex:1;min-width:0}
-/* img+status col: stays column, just smaller */
-#top-panel.compact .img-status-col img{min-height:30px!important;flex:1}
+#top-panel.compact .img-status-col img{min-height:30px!important}
 #top-panel.compact .img-status-col .chart-card{flex-shrink:0}
 
 /* KPI sidebar - vertical, fills chart height */
@@ -265,19 +261,10 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
   </header>
 
 
-  <!-- KPI sidebar + Charts -->
+  <!-- Charts: Category+Coach | KG | Img+Status -->
   <div class="dashboard-main fade-in" style="animation-delay:.05s">
 
-    <!-- Col 1: KPIs -->
-    <div class="kpis" id="kpis">
-      <div class="kpi k-total"     onclick="filterKPI('')">        <div class="kpi-val" id="kv-total">—</div>    <div class="kpi-lbl">Total</div></div>
-      <div class="kpi k-published" onclick="filterKPI('Published')"><div class="kpi-val" id="kv-published">—</div><div class="kpi-lbl">Published</div></div>
-      <div class="kpi k-draft"     onclick="filterKPI('Draft')">   <div class="kpi-val" id="kv-draft">—</div>    <div class="kpi-lbl">Draft</div></div>
-      <div class="kpi k-archived"  onclick="filterKPI('In Review')"><div class="kpi-val" id="kv-inreview">—</div><div class="kpi-lbl">In Review</div></div>
-      <div class="kpi k-idea"      onclick="filterKPI('Archived')"><div class="kpi-val" id="kv-archived">—</div> <div class="kpi-lbl">Archived</div></div>
-    </div>
-
-    <!-- Col 2: Category + Coach stacked -->
+    <!-- Col 1: Category + Coach stacked -->
     <div class="col-stack cat-coach-col fade-in" style="animation-delay:.1s">
       <div class="chart-card" style="display:flex;flex-direction:column">
         <div class="chart-title">Missions by Category <span style="font-size:.62rem;font-weight:400;color:#475569;margin-left:6px">click to filter</span></div>
@@ -289,7 +276,7 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
       </div>
     </div>
 
-    <!-- Col 3: Knowledge Graph full height -->
+    <!-- Col 2: Knowledge Graph full height -->
     <div class="chart-card kg-tile" id="kgTile" onclick="openKG()" style="cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s;display:flex;flex-direction:column" title="Click to open Knowledge Graph">
       <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
         <span>Knowledge Graph</span>
@@ -303,7 +290,7 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
       </div>
     </div>
 
-    <!-- Col 4: Image + Status stacked -->
+    <!-- Col 3: Image + Status stacked -->
     <div class="col-stack img-status-col">
       <img id="gcImg" src="ground control.jpg" alt="Ground Control">
       <div class="chart-card" style="flex-shrink:0">
@@ -930,11 +917,12 @@ function buildMonthFilter(){
 function renderKPIs(){
   var counts={Published:0,Draft:0,'In Review':0,Archived:0};
   allMissions.forEach(function(m){var s=String(m['STATUS']||'');if(s in counts)counts[s]++;});
-  document.getElementById('kv-total').textContent=allMissions.length;
-  document.getElementById('kv-published').textContent=counts.Published;
-  document.getElementById('kv-draft').textContent=counts.Draft;
-  document.getElementById('kv-inreview').textContent=counts['In Review'];
-  document.getElementById('kv-archived').textContent=counts.Archived;
+  function set(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+  set('kv-total',allMissions.length);
+  set('kv-published',counts.Published);
+  set('kv-draft',counts.Draft);
+  set('kv-inreview',counts['In Review']);
+  set('kv-archived',counts.Archived);
 }
 
 // ── Charts ─────────────────────────────────────────────────────────────
@@ -967,7 +955,17 @@ function renderCharts(){
       plugins:{
         legend:{
           position:'right',
-          labels:{color:'#94a3b8',font:{size:11,family:'Inter'},padding:14,boxWidth:12},
+          labels:{
+            color:'#94a3b8',font:{size:11,family:'Inter'},padding:14,boxWidth:12,
+            generateLabels:function(chart){
+              var ds=chart.data.datasets[0];
+              return chart.data.labels.map(function(label,i){
+                return{text:label+' '+ds.data[i],fillStyle:ds.backgroundColor[i],
+                  strokeStyle:'transparent',lineWidth:0,index:i,
+                  fontColor:ds.backgroundColor[i]};
+              });
+            }
+          },
           onClick:function(e,item){
             var st=STATUS_ORDER[item.index];
             filterKPI(document.getElementById('fStatus').value===st?'':st);
