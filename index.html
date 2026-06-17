@@ -50,8 +50,9 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px}
 .kpi.k-idea .kpi-val{color:#a78bfa}
 
 /* Charts panel (right side of dashboard-main) */
-.charts{display:grid;grid-template-columns:240px 1fr 1fr;gap:16px}
-@media(max-width:1100px){.charts{grid-template-columns:1fr 1fr}}
+.charts{display:grid;grid-template-columns:240px 1fr 1fr 1fr;gap:16px}
+@media(max-width:1300px){.charts{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:900px){.charts{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.charts{grid-template-columns:1fr}}
 .chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:20px}
 .chart-title{font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px}
@@ -212,6 +213,10 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
       <div class="chart-card">
         <div class="chart-title">Missions by Category <span style="font-size:.62rem;font-weight:400;color:#475569;margin-left:6px">click to filter</span></div>
         <div class="chart-inner"><canvas id="categoryChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Missions by Coach <span style="font-size:.62rem;font-weight:400;color:#475569;margin-left:6px">click to filter</span></div>
+        <div class="chart-inner" id="coachChartInner"><canvas id="coachChart"></canvas></div>
       </div>
       <div class="chart-card kg-tile" id="kgTile" onclick="openKG()" style="cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s" title="Click to open Knowledge Graph">
         <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between">
@@ -475,6 +480,8 @@ async function fetchAndCache(showIndicator){
       if(jr.ok){jiraRows=parseJiraExcel(await jr.arrayBuffer());VAL_MAP=parseJira(jiraRows);}
     }catch(e2){}
     var fns={portfolio:'Mission_Portfolio.xlsx',ucr:ucrName,jira:jiraRows.length?'Jira_Validation.xls':''};
+    _markFileTime('portfolio'); _markFileTime('ucr');
+    if(jiraRows.length) _markFileTime('jira');
     var slimPortfolio=slimRows(portfolio,PORTFOLIO_COLS);
     var slimUCR=slimRows(ucrRows,UCR_COLS);
     saveCache(slimPortfolio,slimUCR,jiraRows,fns);
@@ -594,18 +601,24 @@ function parseJira(rows){
 }
 
 // ── File sources strip ─────────────────────────────────────────────────
+var _fileLoadTimes={};
 function renderFileSources(fns){
   ['portfolio','ucr','jira'].forEach(function(k){
     var nameEl=document.getElementById('fsn-'+k);
     var chip=document.getElementById('fsr-'+k);
     if(fns&&fns[k]){
-      nameEl.textContent=fns[k];
+      var ts=_fileLoadTimes[k]?(' · '+_fileLoadTimes[k]):'';
+      nameEl.textContent=fns[k]+ts;
       chip.classList.remove('unloaded');
     }else{
       nameEl.textContent=k==='jira'?'Jira (not loaded)':k==='ucr'?'Use Cases.csv':'Mission_Portfolio.xlsx';
       chip.classList.add('unloaded');
     }
   });
+}
+function _markFileTime(k){
+  var now=new Date();
+  _fileLoadTimes[k]=now.toLocaleDateString('de-DE')+' '+now.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
 }
 
 function triggerFileUpdate(which){
@@ -640,6 +653,7 @@ async function handleFileUpdate(which){
       cached.fileNames.jira=f.name;
     }
     try{localStorage.setItem(CACHE_KEY,JSON.stringify(cached));}catch(e){}
+    _markFileTime(which);
     renderFileSources(cached.fileNames);
     var port=_manualPortfolio||cached.portfolio||null;
     var ucr=_manualUCR||cached.ucr||null;
@@ -1315,8 +1329,414 @@ init();
 
 <!-- ── Knowledge Graph Overlay ─────────────────────────────────────────── -->
 <div id="kgOverlay" style="display:none;position:fixed;inset:0;z-index:500;background:#0a0f1e;flex-direction:column">
-  <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
-    <button onclick="closeKG()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(124,58,237,0.2);border:1px solid #7c3aed;border-radius:8px;color:#c4b5fd;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(124,58,237,0.4)'" onmouseout="this.style.background='rgba(124,58,237,0.2)'">← Back to Dashboard</button>
+  <!-- Top bar -->
+  <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
+    <button onclick="closeKG()" style="display:flex;align-items:center;gap:5px;padding:5px 12px;background:rgba(124,58,237,0.2);border:1px solid #7c3aed;border-radius:8px;color:#c4b5fd;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer" onmouseover="this.style.background='rgba(124,58,237,0.4)'" onmouseout="this.style.background='rgba(124,58,237,0.2)'">← Back</button>
+    <div style="font-size:0.92rem;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Knowledge Graph</div>
+    <div id="kg-stat-missions" style="font-size:0.68rem;padding:3px 10px;border-radius:12px;font-weight:600;background:#1e3a5f;color:#60a5fa"></div>
+    <div id="kg-stat-cats"     style="font-size:0.68rem;padding:3px 10px;border-radius:12px;font-weight:600;background:#1a3a2a;color:#4ade80"></div>
+    <div id="kg-stat-coaches"  style="font-size:0.68rem;padding:3px 10px;border-radius:12px;font-weight:600;background:#2a1a3a;color:#c084fc"></div>
+    <div id="kg-stat-tags"     style="font-size:0.68rem;padding:3px 10px;border-radius:12px;font-weight:600;background:#3a2a0a;color:#fbbf24"></div>
+    <!-- 2D / 3D toggle -->
+    <div style="margin-left:auto;display:flex;gap:4px;background:#1e293b;border-radius:8px;padding:3px">
+      <button id="kg-btn-2d" onclick="kgSetMode('2d')" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:#7c3aed;color:#fff">2D</button>
+      <button id="kg-btn-3d" onclick="kgSetMode('3d')" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:transparent;color:#64748b">3D</button>
+    </div>
+  </div>
+  <!-- Legend + controls -->
+  <div style="display:flex;gap:8px;align-items:center;padding:5px 14px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
+    <span style="font-size:0.67rem;color:#475569;font-weight:600">Show:</span>
+    <div class="kg-li on" data-t="mission"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#38bdf8"></div>Mission</div>
+    <div class="kg-li on" data-t="category"   onclick="kgToggleT(this)"><div class="kg-ld" style="background:#4ade80"></div>Category</div>
+    <div class="kg-li on" data-t="coach"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#c084fc"></div>Coach</div>
+    <div class="kg-li on" data-t="tag"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fbbf24"></div>Tag</div>
+    <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
+    <div style="position:relative;display:inline-flex;align-items:center">
+      <span style="position:absolute;left:8px;color:#475569;font-size:0.8rem;pointer-events:none">⌕</span>
+      <input id="kgSearch" type="text" placeholder="Search…" oninput="kgOnSearch()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px 4px 26px;color:#e2e8f0;font-size:0.76rem;width:170px;outline:none;font-family:'Inter',sans-serif">
+    </div>
+    <select id="kgCatFilter" onchange="kgApplyF()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 8px;color:#e2e8f0;font-size:0.74rem;outline:none;font-family:'Inter',sans-serif">
+      <option value="">All Categories</option>
+    </select>
+    <div class="kg-li" onclick="kgZoomFit()" style="color:#7c3aed">⟳ Reset</div>
+    <span id="kg-edge-count" style="font-size:0.67rem;color:#334155;margin-left:4px"></span>
+  </div>
+  <!-- Graph area -->
+  <div style="flex:1;display:flex;min-height:0">
+    <div id="kgWrap" style="flex:1;position:relative;overflow:hidden">
+      <!-- 2D svg -->
+      <svg id="kgSvg" style="width:100%;height:100%;display:block"><g id="kgRoot"></g></svg>
+      <!-- 3D container -->
+      <div id="kg3dWrap" style="position:absolute;inset:0;display:none"></div>
+      <div id="kgTT" style="position:absolute;pointer-events:none;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:7px 11px;font-size:0.75rem;color:#e2e8f0;max-width:240px;z-index:100;display:none;line-height:1.5;font-family:'Inter',sans-serif"></div>
+    </div>
+    <div id="kgDP" style="width:260px;background:#0f172a;border-left:1px solid #1e293b;overflow-y:auto;flex-shrink:0;padding:14px;display:none;font-family:'Inter',sans-serif;font-size:0.8rem">
+      <div id="kgDPC"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+.kg-tile:hover{border-color:rgba(124,58,237,0.6)!important;box-shadow:0 0 20px rgba(124,58,237,0.2)}
+.kg-li{display:flex;align-items:center;gap:5px;font-size:0.7rem;color:#94a3b8;cursor:pointer;padding:2px 7px;border-radius:6px;transition:background .15s;user-select:none;font-family:'Inter',sans-serif}
+.kg-li:hover{background:#1e293b}
+.kg-li.off{opacity:0.3}
+.kg-ld{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+</style>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+<script src="https://unpkg.com/3d-force-graph@1.72.4/dist/3d-force-graph.min.js"></script>
+<script>
+// ── Knowledge Graph ─────────────────────────────────────────────────────────
+var KG = (function(){
+  var KG_TYPE = {
+    mission:  {color:'#38bdf8', stroke:'#0284c7', rBase:5,  hex:0x38bdf8},
+    category: {color:'#4ade80', stroke:'#166534', rBase:18, hex:0x4ade80},
+    coach:    {color:'#c084fc', stroke:'#7e22ce', rBase:13, hex:0xc084fc},
+    tag:      {color:'#fbbf24', stroke:'#92400e', rBase:9,  hex:0xfbbf24},
+  };
+  var STATUS_COLOR = {published:'#4ade80','in progress':'#38bdf8',draft:'#94a3b8',retired:'#f87171'};
+  var STATUS_HEX   = {published:0x4ade80,'in progress':0x38bdf8,draft:0x94a3b8,retired:0xf87171};
+  var CAT_NORM = {
+    'database and data management':'Database & Data Mgmt',
+    'application development and automation':'App Dev & Automation',
+    'digital process automation':'Digital Process Automation',
+    'data and analytics':'Data & Analytics',
+    'integration suite':'Integration Suite','inegration suite':'Integration Suite',
+    'generative ai':'Generative AI','artificial intelligence':'AI','ai core':'AI',
+    'development efficiency':'Dev Efficiency','digital experience':'Digital Experience',
+  };
+
+  var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, labelSel;
+  var graph3d=null, mode='2d';
+  var vis={mission:1,category:1,coach:1,tag:1};
+  var filt={q:'',cat:''};
+  var built=false, selNode=null;
+
+  function normCat(c){ return CAT_NORM[(c||'').toLowerCase()]||c; }
+  function nodeR(n){
+    var b=KG_TYPE[n.type]?.rBase||6;
+    if(n.type==='mission') return b;
+    return Math.min(b+Math.sqrt(n.count||0)*1.8, b*3.5);
+  }
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function buildFromDashboard(){
+    if(!window.allMissions||!window.allMissions.length) return false;
+    var nodes={}, links=[];
+    function node(id,label,type,extra){
+      if(!nodes[id]) nodes[id]={id,label,type,count:0,...(extra||{})};
+      return nodes[id];
+    }
+    allMissions.forEach(function(m){
+      var mid='m:'+m['Mission ID'];
+      var status=(m['STATUS']||'').toLowerCase();
+      var name=m['Mission Name']||m['Title']||('Mission '+m['Mission ID']);
+      var url=m['Link to Discovery Center']||'#';
+      var coach=(m['Coach name(s)']||'').trim();
+      node(mid, name, 'mission', {ucId:m['Mission ID'],status,url,coach});
+
+      var cat=normCat((m['Category']||'Other').trim());
+      node('cat:'+cat, cat, 'category').count++;
+      links.push({source:mid, target:'cat:'+cat, rel:'category'});
+
+      var rawTags=String(m['Tags \n(e.g. Solution Bundle, UC factory etc.)']||m['Tags']||'');
+      rawTags.split(/[\n,;]/).forEach(function(t){
+        t=t.trim();
+        if(t.length<3||t.startsWith('(')||['Yes','No','yes','no'].includes(t)) return;
+        node('tag:'+t.toLowerCase(), t, 'tag').count++;
+        links.push({source:mid, target:'tag:'+t.toLowerCase(), rel:'tag'});
+      });
+
+      if(coach){
+        node('coach:'+coach, coach, 'coach').count++;
+        links.push({source:mid, target:'coach:'+coach, rel:'coach'});
+      }
+    });
+    allNodes=Object.values(nodes);
+    allLinks=links;
+
+    // Populate category filter
+    var sel=document.getElementById('kgCatFilter');
+    sel.innerHTML='<option value="">All Categories</option>';
+    allNodes.filter(n=>n.type==='category').map(n=>n.label).sort().forEach(function(c){
+      var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);
+    });
+
+    var mc=allNodes.filter(n=>n.type==='mission').length;
+    var cc=allNodes.filter(n=>n.type==='category').length;
+    var ch=allNodes.filter(n=>n.type==='coach').length;
+    var tc=allNodes.filter(n=>n.type==='tag').length;
+    document.getElementById('kg-stat-missions').textContent=mc+' Missions';
+    document.getElementById('kg-stat-cats').textContent=cc+' Categories';
+    document.getElementById('kg-stat-coaches').textContent=ch+' Coaches';
+    document.getElementById('kg-stat-tags').textContent=tc+' Tags';
+    document.getElementById('kgTileLabel').textContent=mc+' missions · '+cc+' categories · '+ch+' coaches · '+tc+' tags';
+    built=true; return true;
+  }
+
+  function filteredData(){
+    var nodes=allNodes.filter(function(n){
+      if(!vis[n.type]) return false;
+      if(filt.q&&!n.label.toLowerCase().includes(filt.q)) return false;
+      return true;
+    });
+    if(filt.cat){
+      var catId='cat:'+filt.cat, keep=new Set([catId]);
+      allLinks.forEach(function(l){
+        var s=l.source?.id||l.source, t=l.target?.id||l.target;
+        if(t===catId)keep.add(s);
+      });
+      allLinks.forEach(function(l){
+        var s=l.source?.id||l.source, t=l.target?.id||l.target;
+        if(keep.has(s))keep.add(t);
+      });
+      nodes=nodes.filter(n=>keep.has(n.id));
+    }
+    var nids=new Set(nodes.map(n=>n.id));
+    var links=allLinks.filter(function(l){
+      var s=l.source?.id||l.source, t=l.target?.id||l.target;
+      return nids.has(s)&&nids.has(t)&&vis[l.rel];
+    });
+    return{nodes,links};
+  }
+
+  // ── 2D render ─────────────────────────────────────────────────────────────
+  function render2d(){
+    var wrap=document.getElementById('kgWrap');
+    var W=wrap.clientWidth, H=wrap.clientHeight;
+    svgSel=d3.select('#kgSvg').attr('viewBox','0 0 '+W+' '+H);
+    var root=d3.select('#kgRoot'); root.selectAll('*').remove();
+    zoomBeh=d3.zoom().scaleExtent([0.02,8]).on('zoom',function(e){root.attr('transform',e.transform);});
+    svgSel.call(zoomBeh);
+    svgSel.on('click',function(){selNode=null;document.getElementById('kgDP').style.display='none';nodeSel&&nodeSel.attr('stroke-width',1);});
+
+    var fd=filteredData();
+    window._kgNd=fd.nodes; window._kgLd=fd.links;
+    document.getElementById('kg-edge-count').textContent=fd.nodes.length+' nodes · '+fd.links.length+' edges';
+
+    linkSel=root.append('g').selectAll('line').data(fd.links).join('line')
+      .attr('stroke',d=>KG_TYPE[d.rel]?.color||'#334155')
+      .attr('stroke-opacity',0.18).attr('stroke-width',0.6);
+
+    nodeSel=root.append('g').selectAll('circle').data(fd.nodes,d=>d.id).join('circle')
+      .attr('r',nodeR)
+      .attr('fill',d=>d.type==='mission'?(STATUS_COLOR[d.status]||'#38bdf8'):KG_TYPE[d.type].color)
+      .attr('stroke',d=>KG_TYPE[d.type]?.stroke||'#334155')
+      .attr('stroke-width',1).attr('cursor','pointer')
+      .on('mouseover',onHover2d).on('mouseout',onOut2d).on('click',onClick2d)
+      .call(d3.drag()
+        .on('start',(e,d)=>{if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;})
+        .on('drag', (e,d)=>{d.fx=e.x;d.fy=e.y;})
+        .on('end',  (e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
+
+    labelSel=root.append('g').selectAll('text').data(fd.nodes.filter(n=>n.type!=='mission'),d=>d.id).join('text')
+      .text(d=>d.label.length>26?d.label.slice(0,24)+'…':d.label)
+      .attr('font-size',d=>d.type==='category'?'11px':d.type==='coach'?'9px':'8px')
+      .attr('font-weight',d=>d.type==='category'?'700':'400')
+      .attr('font-family',"'Inter',sans-serif")
+      .attr('fill',d=>KG_TYPE[d.type].color)
+      .attr('text-anchor','middle')
+      .attr('dy',d=>-(nodeR(d)+3))
+      .attr('pointer-events','none')
+      .style('text-shadow','0 0 5px #0a0f1e,0 0 5px #0a0f1e');
+
+    if(sim)sim.stop();
+    sim=d3.forceSimulation(fd.nodes)
+      .force('link',d3.forceLink(fd.links).id(d=>d.id)
+        .distance(d=>d.rel==='category'?90:d.rel==='coach'?70:45)
+        .strength(d=>d.rel==='category'?0.5:0.3))
+      .force('charge',d3.forceManyBody().strength(d=>d.type==='category'?-300:d.type==='coach'?-200:d.type==='mission'?-15:-100))
+      .force('center',d3.forceCenter(W/2,H/2))
+      .force('collide',d3.forceCollide().radius(d=>nodeR(d)+2))
+      .alphaDecay(0.02).on('tick',tick2d);
+    sim.alpha(1).restart();
+    setTimeout(zoomFit2d,2800);
+  }
+
+  function tick2d(){
+    linkSel.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    nodeSel.attr('cx',d=>d.x).attr('cy',d=>d.y);
+    labelSel.attr('x',d=>d.x).attr('y',d=>d.y);
+  }
+
+  function onHover2d(ev,d){
+    var nb=nbrs(d.id);
+    nodeSel.attr('opacity',n=>n.id===d.id||nb.has(n.id)?1:0.1);
+    linkSel.attr('stroke-opacity',l=>{var a=l.source?.id||l.source,b=l.target?.id||l.target;return a===d.id||b===d.id?0.9:0.02;});
+    showTT(ev.offsetX,ev.offsetY,d);
+  }
+  function onOut2d(){
+    document.getElementById('kgTT').style.display='none';
+    nodeSel&&nodeSel.attr('opacity',1); linkSel&&linkSel.attr('stroke-opacity',0.18);
+  }
+  function onClick2d(ev,d){
+    ev.stopPropagation(); selNode=d;
+    nodeSel.attr('stroke-width',n=>n.id===d.id?3:1);
+    openDP(d);
+  }
+
+  function zoomFit2d(){
+    var nd=window._kgNd; if(!nd||!nd.length)return;
+    var wrap=document.getElementById('kgWrap');
+    var W=wrap.clientWidth,H=wrap.clientHeight,pad=60;
+    var xs=nd.map(d=>d.x).filter(Boolean), ys=nd.map(d=>d.y).filter(Boolean);
+    if(!xs.length)return;
+    var x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+    var sc=Math.min((W-pad*2)/(x1-x0||1),(H-pad*2)/(y1-y0||1),4);
+    svgSel.transition().duration(700).call(zoomBeh.transform,d3.zoomIdentity.translate(W/2-sc*(x0+x1)/2,H/2-sc*(y0+y1)/2).scale(sc));
+  }
+
+  // ── 3D render ─────────────────────────────────────────────────────────────
+  function render3d(){
+    var wrap=document.getElementById('kg3dWrap');
+    wrap.innerHTML='';
+    var fd=filteredData();
+    window._kgNd=fd.nodes; window._kgLd=fd.links;
+    document.getElementById('kg-edge-count').textContent=fd.nodes.length+' nodes · '+fd.links.length+' edges';
+
+    // Deep copy to avoid 3d-force-graph mutating shared objects
+    var gData={
+      nodes: fd.nodes.map(n=>({...n})),
+      links: fd.links.map(l=>({source:l.source?.id||l.source, target:l.target?.id||l.target, rel:l.rel}))
+    };
+
+    graph3d = ForceGraph3D({antialias:true, alpha:true})(wrap)
+      .width(wrap.clientWidth).height(wrap.clientHeight)
+      .backgroundColor('#0a0f1e')
+      .graphData(gData)
+      .nodeColor(n=>n.type==='mission'?(STATUS_COLOR[n.status]||'#38bdf8'):KG_TYPE[n.type].color)
+      .nodeVal(n=>n.type==='mission'?2:Math.max(4,nodeR(n)))
+      .nodeLabel(n=>'<span style="font-family:Inter,sans-serif;font-size:12px;color:'+( KG_TYPE[n.type]?.color||'#fff')+';background:#0f172a;padding:3px 7px;border-radius:4px;border:1px solid #334155">'+n.label+(n.status?' · '+n.status:'')+'</span>')
+      .nodeResolution(10)
+      .linkColor(l=>KG_TYPE[l.rel]?.color||'#334155')
+      .linkOpacity(0.25)
+      .linkWidth(0.4)
+      .onNodeClick(function(n){
+        // find original node with full data
+        var orig=(window._kgNd||[]).find(x=>x.id===n.id)||n;
+        openDP(orig);
+      })
+      .onNodeHover(function(n){
+        wrap.style.cursor=n?'pointer':'default';
+      })
+      .d3Force('charge', d3.forceManyBody().strength(n=>n.type==='category'?-300:n.type==='coach'?-200:n.type==='mission'?-15:-100))
+      .d3Force('link', d3.forceLink().id(d=>d.id)
+        .distance(l=>l.rel==='category'?90:l.rel==='coach'?70:45)
+        .strength(l=>l.rel==='category'?0.5:0.3));
+  }
+
+  // ── Shared helpers ────────────────────────────────────────────────────────
+  function nbrs(id){
+    var s=new Set();
+    (window._kgLd||[]).forEach(function(l){
+      var a=l.source?.id||l.source, b=l.target?.id||l.target;
+      if(a===id)s.add(b); if(b===id)s.add(a);
+    }); return s;
+  }
+
+  function showTT(x,y,d){
+    var tl={mission:'Mission',category:'Category',coach:'Coach',tag:'Tag'}[d.type]||d.type;
+    var tt=document.getElementById('kgTT');
+    tt.style.display='block';
+    tt.innerHTML='<b style="color:'+(KG_TYPE[d.type]?.color||'#fff')+'">'+esc(d.label)+'</b><br><span style="color:#64748b;font-size:0.67rem">'+tl+(d.status?' · '+d.status:'')+(d.count?' · '+d.count+' missions':'')+'</span>';
+    tt.style.left=(x+14)+'px'; tt.style.top=(y-10)+'px';
+  }
+
+  function openDP(d){
+    var nb=nbrs(d.id);
+    var nbN=(window._kgNd||[]).filter(n=>nb.has(n.id));
+    var tl={mission:'Mission',category:'Category',coach:'Coach',tag:'Tag'}[d.type]||d.type;
+    var tc={mission:'background:#1e3a5f;color:#60a5fa',category:'background:#1a3a2a;color:#4ade80',coach:'background:#2a1a3a;color:#c084fc',tag:'background:#3a2a0a;color:#fbbf24'}[d.type]||'';
+    var grp={};
+    nbN.forEach(n=>{if(!grp[n.type])grp[n.type]=[];grp[n.type].push(n);});
+    var ch='';
+    Object.entries(grp).forEach(([type,ns])=>{
+      var tll={mission:'Missions',category:'Categories',coach:'Coaches',tag:'Tags'}[type]||type;
+      ch+='<div style="margin-top:10px"><div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.07em;color:#475569;margin-bottom:5px">'+tll+' ('+ns.length+')</div>';
+      ns.slice(0,12).forEach(n=>{
+        ch+='<div onclick="KG.focusNode(\''+n.id+'\')" style="font-size:0.74rem;padding:3px 8px;margin-bottom:2px;border-radius:5px;background:#1e293b;color:#94a3b8;cursor:pointer;display:flex;align-items:center;gap:5px"><div style="width:6px;height:6px;border-radius:50%;background:'+KG_TYPE[n.type].color+';flex-shrink:0"></div>'+esc(n.label)+'</div>';
+      });
+      if(ns.length>12)ch+='<div style="font-size:0.67rem;color:#334155;padding:2px 8px">+'+(ns.length-12)+' more</div>';
+      ch+='</div>';
+    });
+    document.getElementById('kgDPC').innerHTML=
+      '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:8px;display:inline-block;margin-bottom:6px;'+tc+'">'+tl+'</div>'+
+      '<div style="font-size:0.88rem;font-weight:700;color:#f1f5f9;line-height:1.4;margin-bottom:8px">'+esc(d.label)+'</div>'+
+      (d.status?'<div style="margin-bottom:7px"><div style="font-size:0.6rem;text-transform:uppercase;color:#475569;margin-bottom:2px">Status</div><div style="color:#94a3b8;font-size:0.78rem">'+d.status+'</div></div>':'')+
+      (d.ucId?'<a href="'+d.url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;font-size:0.72rem;color:#7c3aed;text-decoration:none;margin-bottom:8px">Open in Discovery Center ↗</a>':'')+
+      ch;
+    document.getElementById('kgDP').style.display='block';
+  }
+
+  // ── Public API ─────────────────────────────────────────────────────────────
+  return{
+    open: function(){
+      var overlay=document.getElementById('kgOverlay');
+      overlay.style.display='flex';
+      if(!built) buildFromDashboard();
+      setTimeout(function(){ mode==='2d'?render2d():render3d(); },50);
+    },
+    close: function(){
+      document.getElementById('kgOverlay').style.display='none';
+      if(sim)sim.stop();
+      if(graph3d){graph3d._destructor&&graph3d._destructor();graph3d=null;}
+    },
+    setMode: function(m){
+      mode=m;
+      document.getElementById('kg-btn-2d').style.background=m==='2d'?'#7c3aed':'transparent';
+      document.getElementById('kg-btn-2d').style.color=m==='2d'?'#fff':'#64748b';
+      document.getElementById('kg-btn-3d').style.background=m==='3d'?'#7c3aed':'transparent';
+      document.getElementById('kg-btn-3d').style.color=m==='3d'?'#fff':'#64748b';
+      document.getElementById('kgSvg').style.display=m==='2d'?'block':'none';
+      document.getElementById('kg3dWrap').style.display=m==='3d'?'block':'none';
+      document.getElementById('kgTT').style.display='none';
+      if(m==='2d'){if(sim)sim.stop();if(graph3d){graph3d._destructor&&graph3d._destructor();graph3d=null;}render2d();}
+      else{if(sim)sim.stop();render3d();}
+    },
+    toggleT: function(el){
+      var t=el.dataset.t; vis[t]=!vis[t]; el.classList.toggle('off',!vis[t]);
+      mode==='2d'?render2d():render3d();
+    },
+    search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
+    catFilter: function(c){ filt.cat=c; mode==='2d'?render2d():render3d(); },
+    zoomFit: function(){ if(mode==='2d')zoomFit2d(); else if(graph3d)graph3d.zoomToFit(400); },
+    focusNode: function(id){
+      var n=(window._kgNd||[]).find(x=>x.id===id); if(!n)return;
+      openDP(n);
+      if(mode==='2d'&&nodeSel){
+        nodeSel.attr('stroke-width',nd=>nd.id===id?3:1); selNode=n;
+        var W=document.getElementById('kgWrap').clientWidth, H=document.getElementById('kgWrap').clientHeight;
+        svgSel.transition().duration(500).call(zoomBeh.transform,d3.zoomIdentity.translate(W/2-n.x,H/2-n.y).scale(1.5));
+      }
+    },
+    rebuildIfNeeded: function(){ built=false; },
+  };
+})();
+
+function openKG(){ KG.open(); }
+function closeKG(){ KG.close(); }
+function kgSetMode(m){ KG.setMode(m); }
+function kgToggleT(el){ KG.toggleT(el); }
+function kgOnSearch(){ KG.search(document.getElementById('kgSearch').value.toLowerCase().trim()); }
+function kgApplyF(){ KG.catFilter(document.getElementById('kgCatFilter').value); }
+function kgZoomFit(){ KG.zoomFit(); }
+
+// Update tile label when data loads
+document.addEventListener('DOMContentLoaded',function(){
+  var _prevLen=0;
+  setInterval(function(){
+    if(window.allMissions&&window.allMissions.length!==_prevLen){
+      _prevLen=window.allMissions.length;
+      KG.rebuildIfNeeded();
+      document.getElementById('kgTileLabel').textContent=window.allMissions.length+' missions loaded — click to explore';
+    }
+  },1000);
+});
+</script>
+</body>
+</html>
     <div style="font-size:0.95rem;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Knowledge Graph</div>
     <div style="font-size:0.72rem;color:#475569">SAP Discovery Center — Missions · Categories · Tags · Evangelists</div>
     <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
