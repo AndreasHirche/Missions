@@ -62,22 +62,23 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);flex:
 .wrap-table{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:0 4px 4px}
 
 /* Header */
-header{display:flex;align-items:center;gap:16px;margin-bottom:8px;flex-wrap:wrap;position:relative;padding-top:12px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:nowrap;position:relative;padding-top:12px}
 .header-brand{flex:0 0 auto}
 header h1{font-size:1.9rem;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;transition:font-size .25s}
 header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity .2s}
-.header-search{flex:1;min-width:180px}
+.header-search{flex:1;min-width:0}
 .header-search input{width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 14px;font-family:'Inter',sans-serif;font-size:0.82rem;outline:none;transition:border-color .2s}
 .header-search input::placeholder{color:#475569}
 .header-search input:focus{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.05)}
 .result-count{font-size:0.75rem;color:var(--muted);white-space:nowrap}
 
-/* Dashboard grid — 3 equal columns: Cat+Coach | KG | Img+Status */
+/* Dashboard grid — 3 columns: Cat+Coach defines height, KG+Img-Status stretch to match */
 .dashboard-main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;align-items:start}
 @media(max-width:900px){.dashboard-main{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.dashboard-main{grid-template-columns:1fr}}
-/* KG tile and img+status col match height of cat+coach col */
-.kg-tile,.img-status-col{align-self:start}
+/* KG tile matches cat+coach height; img-status has fixed image+status */
+.kg-tile,.img-status-col{align-self:stretch}
+.kg-tile{display:flex;flex-direction:column}
 
 /* Compact */
 #top-panel.compact .cat-coach-col{flex-direction:row!important;gap:8px}
@@ -105,8 +106,8 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .chart-inner{position:relative;height:160px;overflow:hidden}
 /* img+status col: image gets remaining space, status is fixed */
 /* KG tile and img+status: fixed height = same as two stacked chart-cards */
-.kg-tile{height:var(--tiles-h,420px)}
-.img-status-col{overflow:hidden;flex-direction:column;gap:12px;height:var(--tiles-h,420px)}
+.kg-tile{height:unset!important}
+.img-status-col{overflow:hidden;flex-direction:column;gap:12px;height:unset!important}
 .img-status-col img{height:220px;flex-shrink:0;object-fit:cover;object-position:top;border-radius:12px;width:100%}
 .img-status-col .chart-card{flex:1;min-height:0}
 #top-panel.compact .img-status-col{flex-direction:row!important;gap:8px;height:var(--tiles-compact-h,160px)}
