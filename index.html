@@ -72,9 +72,11 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .result-count{font-size:0.75rem;color:var(--muted);white-space:nowrap}
 
 /* Dashboard grid — 3 equal columns: Cat+Coach | KG | Img+Status */
-.dashboard-main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;align-items:stretch}
+.dashboard-main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;align-items:start}
 @media(max-width:900px){.dashboard-main{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.dashboard-main{grid-template-columns:1fr}}
+/* KG tile and img+status col match height of cat+coach col */
+.kg-tile,.img-status-col{align-self:stretch}
 
 /* Compact */
 #top-panel.compact .cat-coach-col{flex-direction:row!important;gap:8px}
