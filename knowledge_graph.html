@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAP Discovery Center – Knowledge Graph</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','72',sans-serif;background:#0a0f1e;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Header ── */
+.top-bar{display:flex;align-items:center;gap:12px;padding:10px 18px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap;z-index:10}
+.logo{font-size:0.72rem;font-weight:900;background:linear-gradient(135deg,#0070f2,#00b4d8);color:#fff;padding:5px 10px;border-radius:8px;letter-spacing:0.05em;flex-shrink:0}
+.top-bar h1{font-size:0.95rem;font-weight:700;color:#f1f5f9;flex-shrink:0}
+.top-bar .sub{font-size:0.72rem;color:#64748b}
+.stats-row{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.stat-chip{font-size:0.68rem;padding:3px 10px;border-radius:12px;font-weight:600;white-space:nowrap}
+.stat-mission{background:#1e3a5f;color:#60a5fa}
+.stat-lob{background:#1a3a2a;color:#4ade80}
+.stat-product{background:#3a1a3a;color:#c084fc}
+.stat-tag{background:#3a2a0a;color:#fbbf24}
+
+/* ── Legend ── */
+.legend{display:flex;gap:14px;align-items:center;padding:7px 18px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:0.7rem;color:#94a3b8;cursor:pointer;user-select:none;padding:2px 6px;border-radius:6px;transition:background .15s}
+.legend-item:hover{background:#1e293b}
+.legend-item.hidden-type{opacity:0.35}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ── Controls ── */
+.controls{display:flex;gap:8px;align-items:center;padding:7px 18px;background:#0a0f1e;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap}
+.search-wrap{position:relative}
+.search-wrap input{background:#1e293b;border:1px solid #334155;border-radius:7px;padding:5px 10px 5px 28px;color:#e2e8f0;font-size:0.8rem;width:220px;outline:none}
+.search-wrap input:focus{border-color:#0070f2}
+.search-wrap .si{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#475569;font-size:0.8rem;pointer-events:none}
+select.ctrl{background:#1e293b;border:1px solid #334155;border-radius:7px;padding:5px 8px;color:#e2e8f0;font-size:0.78rem;outline:none;cursor:pointer}
+.btn{padding:5px 12px;border-radius:7px;border:1px solid #334155;background:#1e293b;color:#94a3b8;font-size:0.75rem;cursor:pointer;transition:all .15s}
+.btn:hover{background:#334155;color:#f1f5f9}
+.btn.active{background:#0070f2;border-color:#0070f2;color:#fff}
+#status-msg{font-size:0.72rem;color:#64748b;margin-left:4px}
+
+/* ── Main area ── */
+.main{flex:1;display:flex;min-height:0}
+#graph-wrap{flex:1;position:relative;overflow:hidden}
+svg{width:100%;height:100%;display:block}
+
+/* ── Detail panel ── */
+.detail-panel{width:300px;background:#0f172a;border-left:1px solid #1e293b;overflow-y:auto;flex-shrink:0;display:none;padding:18px 16px;font-size:0.82rem}
+.detail-panel.open{display:block}
+.detail-panel h2{font-size:0.9rem;font-weight:700;color:#f1f5f9;line-height:1.4;margin-bottom:10px}
+.detail-panel .dp-type{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:2px 8px;border-radius:8px;display:inline-block;margin-bottom:10px}
+.dp-field{margin-bottom:10px}
+.dp-field label{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.07em;color:#475569;display:block;margin-bottom:3px}
+.dp-field p{color:#cbd5e1;line-height:1.5}
+.dp-connections{margin-top:14px}
+.dp-connections h3{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.07em;color:#475569;margin-bottom:8px}
+.dp-conn-item{font-size:0.75rem;padding:4px 8px;margin-bottom:3px;border-radius:5px;background:#1e293b;color:#94a3b8;cursor:pointer;transition:background .12s;display:flex;align-items:center;gap:6px}
+.dp-conn-item:hover{background:#334155;color:#f1f5f9}
+.dp-conn-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.close-panel{float:right;background:none;border:none;color:#64748b;font-size:1rem;cursor:pointer;padding:0 0 8px 8px}
+.close-panel:hover{color:#f1f5f9}
+.dp-ext{display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;color:#0070f2;text-decoration:none;margin-top:6px}
+.dp-ext:hover{text-decoration:underline}
+
+/* ── Loading overlay ── */
+#loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0f1e;z-index:20;gap:16px}
+#loading.done{display:none}
+.spinner{width:36px;height:36px;border:3px solid #1e293b;border-top-color:#0070f2;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#load-msg{font-size:0.82rem;color:#64748b}
+#load-detail{font-size:0.68rem;color:#334155;margin-top:4px}
+
+/* Tooltip */
+.tooltip{position:absolute;pointer-events:none;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:8px 12px;font-size:0.75rem;color:#e2e8f0;max-width:260px;z-index:100;display:none;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="logo">DC</div>
+  <div>
+    <div class="top-bar"><h1>SAP Discovery Center – Knowledge Graph</h1></div>
+    <div class="sub">Missions · Lines of Business · Products · Tags</div>
+  </div>
+  <div class="stats-row" id="stats-row"></div>
+</div>
+
+<div class="legend" id="legend">
+  <span style="font-size:0.7rem;color:#475569;font-weight:600;margin-right:4px">Show:</span>
+  <div class="legend-item" data-type="mission" onclick="toggleType(this)"><div class="legend-dot" style="background:#60a5fa"></div>Mission</div>
+  <div class="legend-item" data-type="lob"     onclick="toggleType(this)"><div class="legend-dot" style="background:#4ade80"></div>Line of Business</div>
+  <div class="legend-item" data-type="product" onclick="toggleType(this)"><div class="legend-dot" style="background:#c084fc"></div>Product / Service</div>
+  <div class="legend-item" data-type="tag"     onclick="toggleType(this)"><div class="legend-dot" style="background:#fbbf24"></div>Tag</div>
+  <div style="width:1px;background:#1e293b;height:16px;margin:0 4px"></div>
+  <div class="legend-item" onclick="resetCamera()" style="color:#0070f2">⟳ Reset view</div>
+</div>
+
+<div class="controls">
+  <div class="search-wrap">
+    <span class="si">⌕</span>
+    <input type="text" id="search" placeholder="Search nodes…" oninput="onSearch()">
+  </div>
+  <select class="ctrl" id="lob-filter" onchange="applyFilter()">
+    <option value="">All Lines of Business</option>
+  </select>
+  <select class="ctrl" id="status-filter" onchange="applyFilter()">
+    <option value="">All Statuses</option>
+    <option value="Published">Published</option>
+    <option value="Draft">Draft</option>
+    <option value="Retired">Retired</option>
+  </select>
+  <button class="btn active" id="btn-force"   onclick="setLayout('force')">Force</button>
+  <button class="btn"        id="btn-cluster" onclick="setLayout('cluster')">Cluster</button>
+  <span id="status-msg"></span>
+</div>
+
+<div class="main">
+  <div id="graph-wrap">
+    <div id="loading">
+      <div class="spinner"></div>
+      <div id="load-msg">Connecting to UCR…</div>
+      <div id="load-detail">Requires local server.py running on port 8080</div>
+    </div>
+    <svg id="svg">
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#334155"/>
+        </marker>
+      </defs>
+      <g id="root"></g>
+    </svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+  <div class="detail-panel" id="detail-panel">
+    <button class="close-panel" onclick="closePanel()">✕</button>
+    <div id="dp-content"></div>
+  </div>
+</div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const PROXY = 'http://localhost:8080/ucr-proxy';
+const PAGE_SIZE = 200;
+const MAX_PAGES = 20;
+
+// ── Node type config ────────────────────────────────────────────────────────
+const TYPE = {
+  mission: { color: '#60a5fa', r: 5,  stroke: '#1d4ed8' },
+  lob:     { color: '#4ade80', r: 14, stroke: '#166534' },
+  product: { color: '#c084fc', r: 10, stroke: '#7e22ce' },
+  tag:     { color: '#fbbf24', r: 8,  stroke: '#92400e' },
+};
+
+// ── State ───────────────────────────────────────────────────────────────────
+let allNodes = [], allLinks = [], simulation;
+let visibleTypes = {mission:true, lob:true, product:true, tag:true};
+let currentFilter = {q:'', lob:'', status:''};
+let layout = 'force';
+let selectedNode = null;
+
+// ── Load data ───────────────────────────────────────────────────────────────
+async function loadData() {
+  setMsg('Loading UCR data…');
+  // Try to get cookie from server
+  let cookie = '';
+  try {
+    const cr = await fetch('http://localhost:8080/ucr-cookie');
+    if (cr.ok) { const cj = await cr.json(); cookie = cj.cookie || ''; }
+  } catch(e) {
+    setMsg('⚠ server.py not running — start it first');
+    document.getElementById('load-detail').textContent = 'Run: python server.py in the Missions folder';
+    return;
+  }
+  if (!cookie) {
+    setMsg('⚠ No UCR session — open http://localhost:8080/ucr-login');
+    document.getElementById('load-detail').textContent = 'Log in to UCR, then reload this page';
+    return;
+  }
+
+  const useCases = [];
+  let skip = 0, total = Infinity, page = 0;
+  while (skip < total && page < MAX_PAGES) {
+    setMsg(`Loading missions… ${useCases.length} / ${total === Infinity ? '?' : total}`);
+    const url = PROXY
+      + '?path=' + encodeURIComponent('/uc-authbackend/api/v1/use-case/list')
+      + '&qs='   + encodeURIComponent(`top=${PAGE_SIZE}&skip=${skip}&fields=id,name,status,owner,useCaseProperties,publishingInfo`);
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Accept':'application/json','X-UCR-Cookie': cookie},
+      body: JSON.stringify({involvement:'ALL_USE_CASES'})
+    });
+    if (!resp.ok) {
+      setMsg('UCR fetch error: ' + resp.status + (resp.status===401?' — re-login at /ucr-login':''));
+      return;
+    }
+    const data = await resp.json();
+    if (total === Infinity) total = data.total || data['@odata.count'] || 9999;
+    const batch = data.value || data.useCases || data.result || data.data || [];
+    if (!batch.length) break;
+    useCases.push(...batch);
+    skip += PAGE_SIZE;
+    page++;
+  }
+
+  setMsg(`Building graph from ${useCases.length} missions…`);
+  await new Promise(r => setTimeout(r, 30));
+  buildGraph(useCases);
+}
+
+// ── Build graph ─────────────────────────────────────────────────────────────
+function buildGraph(useCases) {
+  const nodeMap = new Map();
+  const links = [];
+
+  function getOrCreate(id, label, type, extra={}) {
+    if (!nodeMap.has(id)) {
+      nodeMap.set(id, {id, label, type, count:0, ...extra});
+    }
+    return nodeMap.get(id);
+  }
+
+  // Collect all LOBs for filter
+  const lobSet = new Set();
+
+  for (const u of useCases) {
+    const props = u.useCaseProperties || {};
+    const missionNode = getOrCreate('mission:'+u.id, u.name||u.id, 'mission', {
+      ucId: u.id,
+      status: u.status || '',
+      url: 'https://discovery-center.cloud.sap/missiondetail/'+u.id,
+    });
+
+    // Lines of Business
+    const lobs = Array.isArray(props.lob) ? props.lob : (props.lob ? [props.lob] : []);
+    for (const l of lobs) {
+      const name = (typeof l === 'string') ? l : (l.name || l.label || String(l));
+      if (!name) continue;
+      lobSet.add(name);
+      const n = getOrCreate('lob:'+name, name, 'lob');
+      n.count++;
+      links.push({source: 'mission:'+u.id, target: 'lob:'+name, type:'lob'});
+    }
+
+    // Products / Services
+    const prods = Array.isArray(props.product) ? props.product : (props.product ? [props.product] : []);
+    for (const p of prods) {
+      const name = (typeof p === 'string') ? p : (p.name || p.label || String(p));
+      if (!name || name.length > 80) continue;
+      const n = getOrCreate('product:'+name, name, 'product');
+      n.count++;
+      links.push({source: 'mission:'+u.id, target: 'product:'+name, type:'product'});
+    }
+
+    // Tags
+    const tags = Array.isArray(props.tags) ? props.tags : (props.tags ? [props.tags] : []);
+    for (const t of tags) {
+      const name = (typeof t === 'string') ? t : (t.name || t.label || String(t));
+      if (!name) continue;
+      const n = getOrCreate('tag:'+name, name, 'tag');
+      n.count++;
+      links.push({source: 'mission:'+u.id, target: 'tag:'+name, type:'tag'});
+    }
+  }
+
+  // Attach mission node lob for filtering
+  for (const u of useCases) {
+    const props = u.useCaseProperties || {};
+    const lobs = Array.isArray(props.lob) ? props.lob : (props.lob ? [props.lob] : []);
+    const mn = nodeMap.get('mission:'+u.id);
+    if (mn) mn.lobs = lobs.map(l => (typeof l==='string'?l:(l.name||l.label||'')));
+  }
+
+  allNodes = Array.from(nodeMap.values());
+  allLinks = links;
+
+  // Scale non-mission node sizes by connection count
+  for (const n of allNodes) {
+    if (n.type !== 'mission') {
+      const base = TYPE[n.type].r;
+      n.r = Math.min(base + Math.sqrt(n.count) * 1.5, base * 3);
+    } else {
+      n.r = TYPE.mission.r;
+    }
+  }
+
+  // Populate LOB filter
+  const lobSel = document.getElementById('lob-filter');
+  for (const l of [...lobSet].sort()) {
+    const opt = document.createElement('option');
+    opt.value = l; opt.textContent = l;
+    lobSel.appendChild(opt);
+  }
+
+  // Stats
+  const counts = {mission:0, lob:0, product:0, tag:0};
+  for (const n of allNodes) counts[n.type]++;
+  document.getElementById('stats-row').innerHTML =
+    `<span class="stat-chip stat-mission">${counts.mission} Missions</span>`+
+    `<span class="stat-chip stat-lob">${counts.lob} LoB</span>`+
+    `<span class="stat-chip stat-product">${counts.product} Products</span>`+
+    `<span class="stat-chip stat-tag">${counts.tag} Tags</span>`;
+
+  document.getElementById('status-msg').textContent = `${allNodes.length} nodes · ${allLinks.length} edges`;
+  document.getElementById('loading').classList.add('done');
+  renderGraph();
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+let svg, root, linkSel, nodeSel, labelSel;
+let zoom;
+
+function renderGraph() {
+  const wrap = document.getElementById('graph-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+
+  svg = d3.select('#svg').attr('viewBox', `0 0 ${W} ${H}`);
+  root = d3.select('#root');
+  root.selectAll('*').remove();
+
+  zoom = d3.zoom()
+    .scaleExtent([0.05, 6])
+    .on('zoom', e => root.attr('transform', e.transform));
+  svg.call(zoom);
+
+  const {nodes, links} = filteredData();
+
+  // Build lookup for fast neighbor queries
+  window._linkData = links;
+  window._nodeData = nodes;
+
+  const linkG = root.append('g').attr('class','links');
+  const nodeG = root.append('g').attr('class','nodes');
+
+  linkSel = linkG.selectAll('line').data(links).join('line')
+    .attr('stroke', d => TYPE[d.type]?.color || '#334155')
+    .attr('stroke-opacity', 0.25)
+    .attr('stroke-width', 0.7);
+
+  nodeSel = nodeG.selectAll('circle').data(nodes, d=>d.id).join('circle')
+    .attr('r', d => d.r || TYPE[d.type].r)
+    .attr('fill', d => TYPE[d.type].color)
+    .attr('stroke', d => TYPE[d.type].stroke)
+    .attr('stroke-width', 1)
+    .attr('cursor', 'pointer')
+    .on('mouseover', onNodeHover)
+    .on('mouseout', onNodeOut)
+    .on('click', onNodeClick)
+    .call(d3.drag()
+      .on('start', (e,d) => { if(!e.active) simulation.alphaTarget(0.3).restart(); d.fx=d.x;d.fy=d.y; })
+      .on('drag',  (e,d) => { d.fx=e.x; d.fy=e.y; })
+      .on('end',   (e,d) => { if(!e.active) simulation.alphaTarget(0); d.fx=null;d.fy=null; }));
+
+  // Labels only for non-mission nodes (too many missions)
+  labelSel = nodeG.selectAll('text').data(nodes.filter(n=>n.type!=='mission'), d=>d.id).join('text')
+    .text(d => d.label.length > 30 ? d.label.slice(0,28)+'…' : d.label)
+    .attr('font-size', d => d.type==='lob'?'11px': d.type==='product'?'9px':'8px')
+    .attr('fill', d => TYPE[d.type].color)
+    .attr('text-anchor','middle')
+    .attr('dy', d => -(d.r||TYPE[d.type].r) - 3)
+    .attr('pointer-events','none')
+    .style('text-shadow','0 0 4px #0a0f1e');
+
+  if (simulation) simulation.stop();
+
+  simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d=>d.id)
+      .distance(d => d.type==='lob'?80: d.type==='product'?50:40)
+      .strength(d => d.type==='lob'?0.4:0.3))
+    .force('charge', d3.forceManyBody()
+      .strength(d => d.type==='lob'?-200: d.type==='mission'?-30:-80))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collision', d3.forceCollide().radius(d=>(d.r||TYPE[d.type].r)+3))
+    .alphaDecay(0.025)
+    .on('tick', ticked);
+
+  simulation.alpha(1).restart();
+
+  // Initial zoom to fit after settling
+  setTimeout(() => zoomToFit(), 2500);
+}
+
+function ticked() {
+  linkSel
+    .attr('x1', d=>d.source.x).attr('y1', d=>d.source.y)
+    .attr('x2', d=>d.target.x).attr('y2', d=>d.target.y);
+  nodeSel.attr('cx', d=>d.x).attr('cy', d=>d.y);
+  labelSel.attr('x', d=>d.x).attr('y', d=>d.y);
+}
+
+function filteredData() {
+  const {q, lob, status} = currentFilter;
+  let nodes = allNodes.filter(n => {
+    if (!visibleTypes[n.type]) return false;
+    if (status && n.type==='mission' && n.status !== status) return false;
+    if (lob && n.type==='mission' && !(n.lobs||[]).includes(lob)) {
+      // also keep the lob node itself
+      if (n.type !== 'lob') return false;
+    }
+    if (q) {
+      if (!n.label.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // When LOB filter active: only keep mission nodes that have that LOB + the LOB node + connected products/tags
+  if (lob) {
+    const keep = new Set();
+    for (const n of nodes) {
+      if (n.type === 'mission' && (n.lobs||[]).includes(lob)) keep.add(n.id);
+      if (n.type === 'lob' && n.label === lob) keep.add(n.id);
+    }
+    // add connected products/tags
+    for (const l of allLinks) {
+      const sid = typeof l.source==='object'?l.source.id:l.source;
+      const tid = typeof l.target==='object'?l.target.id:l.target;
+      if (keep.has(sid)) keep.add(tid);
+      if (keep.has(tid)) keep.add(sid);
+    }
+    nodes = allNodes.filter(n => keep.has(n.id) && visibleTypes[n.type]);
+  }
+
+  const nodeIds = new Set(nodes.map(n=>n.id));
+  const links = allLinks.filter(l => {
+    const sid = typeof l.source==='object'?l.source.id:l.source;
+    const tid = typeof l.target==='object'?l.target.id:l.target;
+    return nodeIds.has(sid) && nodeIds.has(tid) && visibleTypes[l.type];
+  });
+
+  return {nodes, links};
+}
+
+// ── Interaction ─────────────────────────────────────────────────────────────
+function onNodeHover(event, d) {
+  const tt = document.getElementById('tooltip');
+  const neighbors = getNeighborIds(d.id);
+  nodeSel.attr('opacity', n => n.id===d.id||neighbors.has(n.id) ? 1 : 0.15);
+  linkSel.attr('stroke-opacity', l => {
+    const sid = typeof l.source==='object'?l.source.id:l.source;
+    const tid = typeof l.target==='object'?l.target.id:l.target;
+    return sid===d.id||tid===d.id ? 0.9 : 0.05;
+  });
+  const typeLabel = {mission:'Mission',lob:'Line of Business',product:'Product/Service',tag:'Tag'}[d.type]||d.type;
+  tt.style.display='block';
+  tt.innerHTML = `<b style="color:${TYPE[d.type].color}">${d.label}</b><br>
+    <span style="color:#64748b;font-size:0.68rem">${typeLabel}${d.status?' · '+d.status:''}${d.count?' · '+d.count+' missions':''}</span>`;
+  tt.style.left = (event.offsetX+14)+'px';
+  tt.style.top  = (event.offsetY-10)+'px';
+}
+
+function onNodeOut() {
+  document.getElementById('tooltip').style.display='none';
+  nodeSel.attr('opacity',1);
+  linkSel.attr('stroke-opacity',0.25);
+}
+
+function onNodeClick(event, d) {
+  event.stopPropagation();
+  selectedNode = d;
+  openPanel(d);
+  // Highlight
+  nodeSel.attr('stroke-width', n => n.id===d.id ? 3 : 1);
+}
+
+svg && d3.select('#svg').on('click', () => {
+  if(selectedNode){ nodeSel&&nodeSel.attr('stroke-width',1); selectedNode=null; closePanel(); }
+});
+
+function getNeighborIds(id) {
+  const s = new Set();
+  for (const l of (window._linkData||[])) {
+    const sid = typeof l.source==='object'?l.source.id:l.source;
+    const tid = typeof l.target==='object'?l.target.id:l.target;
+    if (sid===id) s.add(tid);
+    if (tid===id) s.add(sid);
+  }
+  return s;
+}
+
+function openPanel(d) {
+  const panel = document.getElementById('detail-panel');
+  const typeLabel = {mission:'Mission',lob:'Line of Business',product:'Product/Service',tag:'Tag'}[d.type]||d.type;
+  const typeColors = {mission:'background:#1e3a5f;color:#60a5fa',lob:'background:#1a3a2a;color:#4ade80',product:'background:#3a1a3a;color:#c084fc',tag:'background:#3a2a0a;color:#fbbf24'};
+  const neighbors = getNeighborIds(d.id);
+  const neighborNodes = (window._nodeData||[]).filter(n=>neighbors.has(n.id));
+
+  let connHtml = '';
+  const groups = {};
+  for (const n of neighborNodes) { (groups[n.type]=[]).push || (groups[n.type]=[n]); groups[n.type].push(n); }
+  // rebuild properly
+  const grp = {};
+  for (const n of neighborNodes) { if(!grp[n.type])grp[n.type]=[]; grp[n.type].push(n); }
+  for (const [type, nodes] of Object.entries(grp)) {
+    const typeL = {mission:'Missions',lob:'Lines of Business',product:'Products',tag:'Tags'}[type]||type;
+    connHtml += `<div class="dp-connections"><h3>${typeL} (${nodes.length})</h3>`;
+    for (const n of nodes.slice(0,20)) {
+      connHtml += `<div class="dp-conn-item" onclick="focusNode('${n.id}')"><div class="dp-conn-dot" style="background:${TYPE[n.type].color}"></div>${escHtml(n.label)}</div>`;
+    }
+    if (nodes.length>20) connHtml += `<div style="font-size:0.68rem;color:#475569;padding:4px 8px">+${nodes.length-20} more…</div>`;
+    connHtml += '</div>';
+  }
+
+  document.getElementById('dp-content').innerHTML =
+    `<div class="dp-type" style="${typeColors[d.type]||''}">${typeLabel}</div>`+
+    `<h2>${escHtml(d.label)}</h2>`+
+    (d.status?`<div class="dp-field"><label>Status</label><p>${d.status}</p></div>`:'') +
+    (d.ucId?`<div class="dp-field"><label>UCR ID</label><p>${d.ucId}</p></div>`+'<a class="dp-ext" href="'+d.url+'" target="_blank" rel="noopener">Open in Discovery Center ↗</a>':'')+
+    (d.count?`<div class="dp-field"><label>Connected missions</label><p>${d.count}</p></div>`:'')+
+    connHtml;
+
+  panel.classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('detail-panel').classList.remove('open');
+}
+
+function focusNode(id) {
+  const n = (window._nodeData||[]).find(n=>n.id===id);
+  if (!n) return;
+  openPanel(n);
+  // Pan to node
+  const W = document.getElementById('graph-wrap').clientWidth;
+  const H = document.getElementById('graph-wrap').clientHeight;
+  svg.transition().duration(600).call(
+    zoom.transform, d3.zoomIdentity.translate(W/2-n.x, H/2-n.y).scale(1.2)
+  );
+  nodeSel.attr('stroke-width', nd => nd.id===id ? 3 : 1);
+  selectedNode = n;
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Controls ─────────────────────────────────────────────────────────────────
+function toggleType(el) {
+  const t = el.dataset.type;
+  visibleTypes[t] = !visibleTypes[t];
+  el.classList.toggle('hidden-type', !visibleTypes[t]);
+  renderGraph();
+}
+
+function onSearch() {
+  currentFilter.q = document.getElementById('search').value.toLowerCase().trim();
+  renderGraph();
+}
+
+function applyFilter() {
+  currentFilter.lob    = document.getElementById('lob-filter').value;
+  currentFilter.status = document.getElementById('status-filter').value;
+  renderGraph();
+}
+
+function setLayout(l) {
+  layout = l;
+  document.getElementById('btn-force').classList.toggle('active', l==='force');
+  document.getElementById('btn-cluster').classList.toggle('active', l==='cluster');
+  renderGraph();
+}
+
+function resetCamera() {
+  zoomToFit();
+}
+
+function zoomToFit() {
+  if (!window._nodeData || !window._nodeData.length) return;
+  const wrap = document.getElementById('graph-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const pad = 60;
+  const xs = window._nodeData.map(d=>d.x).filter(Boolean);
+  const ys = window._nodeData.map(d=>d.y).filter(Boolean);
+  if (!xs.length) return;
+  const x0=Math.min(...xs), x1=Math.max(...xs);
+  const y0=Math.min(...ys), y1=Math.max(...ys);
+  const scale = Math.min((W-pad*2)/(x1-x0||1), (H-pad*2)/(y1-y0||1), 3);
+  const tx = W/2 - scale*(x0+x1)/2;
+  const ty = H/2 - scale*(y0+y1)/2;
+  svg.transition().duration(800).call(zoom.transform, d3.zoomIdentity.translate(tx,ty).scale(scale));
+}
+
+function setMsg(m) {
+  document.getElementById('load-msg').textContent = m;
+}
+
+// ── Re-attach SVG click after render ─────────────────────────────────────────
+function attachSvgClick() {
+  d3.select('#svg').on('click', () => {
+    if(selectedNode){ nodeSel&&nodeSel.attr('stroke-width',1); selectedNode=null; closePanel(); }
+  });
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  loadData().then(attachSvgClick);
+});
+window.addEventListener('resize', () => {
+  if (allNodes.length) renderGraph();
+});
+</script>
+</body>
+</html>
