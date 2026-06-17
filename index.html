@@ -456,16 +456,18 @@ async function init(){
 
 async function fetchAndCache(showIndicator){
   if(location.protocol==='file:'){
-    document.getElementById('tableArea').innerHTML=
-      '<div class="loading">'
-      +'<div style="font-size:2rem;margin-bottom:10px">📂</div>'
-      +'<div style="font-size:.95rem;font-weight:600;color:#a78bfa;margin-bottom:8px">Local file — please load data manually</div>'
-      +'<div style="font-size:.8rem;color:#64748b;line-height:1.9">'
-      +'<b style="color:#e2e8f0">1.</b> Click <b style="color:#e2e8f0">Mission_Portfolio.xlsx ↺</b> above and pick the file<br>'
-      +'<b style="color:#e2e8f0">2.</b> Click <b style="color:#e2e8f0">Use Cases.csv ↺</b> above and pick the file<br>'
-      +'<b style="color:#e2e8f0">3.</b> Optionally load Jira validation via the third ↺<br>'
-      +'<span style="color:#475569">Or open via <a href="https://AndreasHirche.github.io/Missions/" target="_blank" style="color:#a78bfa">GitHub Pages</a> for full auto-loading.</span>'
-      +'</div></div>';
+    if(showIndicator){
+      document.getElementById('tableArea').innerHTML=
+        '<div class="loading">'
+        +'<div style="font-size:2rem;margin-bottom:10px">📂</div>'
+        +'<div style="font-size:.95rem;font-weight:600;color:#a78bfa;margin-bottom:8px">Local file — please load data manually</div>'
+        +'<div style="font-size:.8rem;color:#64748b;line-height:1.9">'
+        +'<b style="color:#e2e8f0">1.</b> Click <b style="color:#e2e8f0">Mission_Portfolio.xlsx ↺</b> above and pick the file<br>'
+        +'<b style="color:#e2e8f0">2.</b> Click <b style="color:#e2e8f0">Use Cases.csv ↺</b> above and pick the file<br>'
+        +'<b style="color:#e2e8f0">3.</b> Optionally load Jira validation via the third ↺<br>'
+        +'<span style="color:#475569">Or open via <a href="https://AndreasHirche.github.io/Missions/" target="_blank" style="color:#a78bfa">GitHub Pages</a> for full auto-loading.</span>'
+        +'</div></div>';
+    }
     return;
   }
   try{
@@ -1380,6 +1382,7 @@ init();
 </style>
 
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
 <script>
 // ── Knowledge Graph ─────────────────────────────────────────────────────────
@@ -1469,8 +1472,8 @@ var KG = (function(){
     document.getElementById('kg-stat-tags').textContent=tc+' Tags';
     document.getElementById('kgTileLabel').textContent=mc+' missions · '+cc+' categories · '+ch+' coaches · '+tc+' tags';
     built=true;
-    // render mini preview
-    setTimeout(renderMini, 100);
+    // render mini preview — wait for layout
+    setTimeout(renderMini, 400);
     return true;
   }
 
@@ -1480,7 +1483,10 @@ var KG = (function(){
     var svgEl=document.getElementById('kgMiniSvg');
     if(!svgEl||!allNodes.length)return;
     var parent=svgEl.parentElement;
-    var W=parent.clientWidth||240, H=parent.clientHeight||230;
+    var W=parent.clientWidth, H=parent.clientHeight;
+    // If not laid out yet, retry
+    if(W<10||H<10){ setTimeout(renderMini,300); return; }
+    svgEl.setAttribute('width',W); svgEl.setAttribute('height',H);
     var mini=d3.select('#kgMiniSvg').attr('viewBox','0 0 '+W+' '+H);
     mini.selectAll('*').remove();
 
@@ -1676,6 +1682,52 @@ var KG = (function(){
     var linkFn=graph3d.d3Force('link');
     if(chargeFn&&chargeFn.strength) chargeFn.strength(n=>n.type==='category'?-120:n.type==='coach'?-80:n.type==='mission'?-10:-60);
     if(linkFn&&linkFn.distance)     linkFn.distance(l=>l.rel==='category'?80:l.rel==='coach'?60:40);
+
+    // ── Add orbiting rocket ────────────────────────────────────────────────
+    // Wait for scene to be ready
+    var _rocketInit=0;
+    (function tryAddRocket(){
+      var scene=graph3d.scene&&graph3d.scene();
+      if(!scene){ if(++_rocketInit<30)setTimeout(tryAddRocket,200); return; }
+      try{
+        var T=THREE;
+        var M=T.MeshBasicMaterial;
+        var rocket=new T.Group();
+        // body
+        rocket.add(new T.Mesh(new T.CapsuleGeometry(2.5,9,8,16),new M({color:0xbcc8d4})));
+        // nose
+        var nose=new T.Mesh(new T.ConeGeometry(2.5,5,16),new M({color:0x1d4ed8}));
+        nose.position.y=9.5; rocket.add(nose);
+        // fins
+        for(var i=0;i<3;i++){
+          var pv=new T.Group(); pv.rotation.y=(i/3)*Math.PI*2;
+          var fin=new T.Mesh(new T.BoxGeometry(1,5,3.5),new M({color:0x3b82f6}));
+          fin.position.set(3.5,-7,0); pv.add(fin); rocket.add(pv);
+        }
+        // flame
+        var flameMat=new M({color:0xf97316,transparent:true,opacity:0.9});
+        var flame=new T.Mesh(new T.ConeGeometry(1.8,5,10),flameMat);
+        flame.position.y=-9.5; flame.rotation.z=Math.PI; rocket.add(flame);
+        // window
+        var winRing=new T.Mesh(new T.TorusGeometry(0.8,0.2,8,16),new M({color:0x94a3b8}));
+        winRing.position.set(2.5,1.5,0); winRing.rotation.y=Math.PI/2; rocket.add(winRing);
+        var winGlass=new T.Mesh(new T.CircleGeometry(0.62,16),new M({color:0x0a2d5e,side:T.DoubleSide}));
+        winGlass.position.set(2.52,1.5,0); winGlass.rotation.y=Math.PI/2; rocket.add(winGlass);
+        rocket.rotation.x=-Math.PI/2;
+        var orbit=new T.Group();
+        orbit.rotation.x=0.4; orbit.rotation.z=0.3;
+        rocket.position.set(220,0,0); orbit.add(rocket);
+        scene.add(orbit);
+        // ambient light
+        scene.add(new T.AmbientLight(0xffffff,0.8));
+        var tick3=0;
+        (function animRocket(){
+          requestAnimationFrame(animRocket);
+          orbit.rotation.y+=0.006;
+          flameMat.opacity=0.7+0.2*Math.sin(tick3+=0.12);
+        })();
+      }catch(e){ console.warn('KG rocket init failed:',e); }
+    })();
   }
 
   // ── Shared helpers ────────────────────────────────────────────────────────
