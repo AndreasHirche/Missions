@@ -25,7 +25,7 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact{border-color:var(--border)}
 /* Scroll area fills remaining height automatically */
 #scroll-area{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
-#scroll-area .wrap-table{flex:1;display:flex;flex-direction:column;padding:0 4px 4px;min-height:0}
+#scroll-area .wrap-table{flex:1;display:flex;flex-direction:column;padding:0 4px 4px;min-height:0;gap:4px}
 #scroll-area .table-toolbar{flex-shrink:0}
 #scroll-area .tbl-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
 #scroll-area .tbl-scroll{flex:1;overflow-x:scroll;overflow-y:auto;min-height:0}
@@ -180,7 +180,8 @@ td.filterable{cursor:pointer;transition:background .15s}
 td.filterable:hover{background:rgba(124,58,237,0.12)}
 
 /* Active filter chips */
-.table-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:12px;min-height:20px}
+.table-toolbar{display:flex;align-items:center;gap:12px;min-height:0;margin-bottom:0}
+.table-toolbar:not(:has(.chip)){display:none}
 .chip-row{display:flex;flex-wrap:wrap;gap:8px;flex:1}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 12px;border-radius:20px;font-size:.72rem;font-weight:600;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.45);color:#c4b5fd;cursor:default}
 .chip-x{cursor:pointer;opacity:.7;font-size:.8rem;line-height:1;padding:0 2px}
