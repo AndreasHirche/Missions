@@ -162,6 +162,12 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 .file-src-name{font-size:.72rem;color:#94a3b8;font-family:'Inter',sans-serif}
 .file-src-btn{font-size:.75rem;color:#7c3aed;line-height:1}
 </style>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -276,13 +282,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 </div>
 <div id="colFilterDrop" style="position:fixed;z-index:300;background:#1a1a2e;border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:4px;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:none"></div>
 
-<!-- Scripts loaded in order: XLSX first, then Chart.js, then app -->
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://d3js.org/d3.v7.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
+<!-- App scripts -->
 <script>
 // ── Particles ──────────────────────────────────────────────────────────
 (function(){
@@ -1670,9 +1670,15 @@ var KG = (function(){
     wrap.innerHTML='';
 
     if(typeof ForceGraph3D==='undefined'){
-      wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-family:Inter,sans-serif;font-size:0.85rem">3D library loading… try again in a moment.</div>';
+      // Script still loading — retry up to 5s
+      if((render3d._retries=(render3d._retries||0)+1)<25){
+        wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-family:Inter,sans-serif;font-size:0.82rem;gap:8px"><div style="width:16px;height:16px;border:2px solid #334155;border-top-color:#7c3aed;border-radius:50%;animation:spin .7s linear infinite"></div>Loading 3D engine…</div>';
+        setTimeout(render3d,200); return;
+      }
+      wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f87171;font-family:Inter,sans-serif;font-size:0.82rem">3D engine failed to load — check your internet connection</div>';
       return;
     }
+    render3d._retries=0;
 
     // ── Fractal background canvas (WebGL fragment shader) ──────────────────
     var fCanvas=document.createElement('canvas');
