@@ -33,7 +33,8 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px}
 .result-count{font-size:0.75rem;color:var(--muted);white-space:nowrap}
 
 /* Dashboard main: KPI sidebar + charts */
-.dashboard-main{display:grid;grid-template-columns:140px 1fr auto;gap:20px;margin-bottom:28px;align-items:stretch}
+.dashboard-main{display:grid;grid-template-columns:140px 1fr 1.4fr auto;gap:16px;margin-bottom:28px;align-items:stretch}
+@media(max-width:1100px){.dashboard-main{grid-template-columns:140px 1fr 1fr}}
 @media(max-width:700px){.dashboard-main{grid-template-columns:1fr}}
 
 /* KPI sidebar - vertical, fills chart height */
@@ -49,12 +50,12 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px}
 .kpi.k-archived .kpi-val{color:#fbbf24}
 .kpi.k-idea .kpi-val{color:#a78bfa}
 
-/* Charts panel (right side of dashboard-main) */
-.charts{display:grid;grid-template-columns:240px 1fr 1fr 2fr;gap:16px}
-@media(max-width:1300px){.charts{grid-template-columns:1fr 1fr;}}
-@media(max-width:900px){.charts{grid-template-columns:1fr 1fr}}
-@media(max-width:600px){.charts{grid-template-columns:1fr}}
-.chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:20px}
+/* Charts panel — now direct children of dashboard-main */
+.charts{display:contents} /* flatten — children go directly into dashboard-main grid */
+.col-stack{display:flex;flex-direction:column;gap:16px;min-height:0}
+.col-stack .chart-card{flex:1;min-height:0}
+.col-stack .chart-card .chart-inner{height:auto;flex:1;min-height:100px}
+.chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:16px}
 .chart-title{font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px}
 .chart-inner{position:relative;height:230px}
 
@@ -198,40 +199,51 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 
   <!-- KPI sidebar + Charts -->
   <div class="dashboard-main fade-in" style="animation-delay:.05s">
+
+    <!-- Col 1: KPIs -->
     <div class="kpis" id="kpis">
-      <div class="kpi k-total" onclick="filterKPI('')"><div class="kpi-val" id="kv-total">—</div><div class="kpi-lbl">Total</div></div>
+      <div class="kpi k-total"     onclick="filterKPI('')">        <div class="kpi-val" id="kv-total">—</div>    <div class="kpi-lbl">Total</div></div>
       <div class="kpi k-published" onclick="filterKPI('Published')"><div class="kpi-val" id="kv-published">—</div><div class="kpi-lbl">Published</div></div>
-      <div class="kpi k-draft" onclick="filterKPI('Draft')"><div class="kpi-val" id="kv-draft">—</div><div class="kpi-lbl">Draft</div></div>
-      <div class="kpi k-archived" onclick="filterKPI('In Review')"><div class="kpi-val" id="kv-inreview">—</div><div class="kpi-lbl">In Review</div></div>
-      <div class="kpi k-idea" onclick="filterKPI('Archived')"><div class="kpi-val" id="kv-archived">—</div><div class="kpi-lbl">Archived</div></div>
+      <div class="kpi k-draft"     onclick="filterKPI('Draft')">   <div class="kpi-val" id="kv-draft">—</div>    <div class="kpi-lbl">Draft</div></div>
+      <div class="kpi k-archived"  onclick="filterKPI('In Review')"><div class="kpi-val" id="kv-inreview">—</div><div class="kpi-lbl">In Review</div></div>
+      <div class="kpi k-idea"      onclick="filterKPI('Archived')"><div class="kpi-val" id="kv-archived">—</div> <div class="kpi-lbl">Archived</div></div>
     </div>
-    <div class="charts fade-in" style="animation-delay:.1s">
-      <div class="chart-card">
-        <div class="chart-title">Status Distribution</div>
-        <div class="chart-inner"><canvas id="statusChart"></canvas></div>
-      </div>
-      <div class="chart-card">
+
+    <!-- Col 2: Category + Coach stacked -->
+    <div class="col-stack fade-in" style="animation-delay:.1s">
+      <div class="chart-card" style="display:flex;flex-direction:column">
         <div class="chart-title">Missions by Category <span style="font-size:.62rem;font-weight:400;color:#475569;margin-left:6px">click to filter</span></div>
-        <div class="chart-inner"><canvas id="categoryChart"></canvas></div>
+        <div class="chart-inner" style="flex:1;min-height:90px"><canvas id="categoryChart"></canvas></div>
       </div>
-      <div class="chart-card">
+      <div class="chart-card" style="display:flex;flex-direction:column">
         <div class="chart-title">Missions by Coach <span style="font-size:.62rem;font-weight:400;color:#475569;margin-left:6px">click to filter</span></div>
-        <div class="chart-inner" id="coachChartInner"><canvas id="coachChart"></canvas></div>
+        <div class="chart-inner" id="coachChartInner" style="flex:1;min-height:90px"><canvas id="coachChart"></canvas></div>
       </div>
-      <div class="chart-card kg-tile" id="kgTile" onclick="openKG()" style="cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s" title="Click to open Knowledge Graph">
-        <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span>Knowledge Graph</span>
-          <span style="font-size:0.7rem;color:#7c3aed;font-weight:600">⛶ Fullscreen</span>
-        </div>
-        <div class="chart-inner" id="kgPreview" style="position:relative;overflow:hidden;background:#060a12;border-radius:8px;min-width:0">
-          <svg id="kgMiniSvg" style="position:absolute;inset:0;width:100%;height:100%;display:block"></svg>
-          <div id="kgTileBadge" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;pointer-events:none">
-            <div style="font-size:0.7rem;color:#a78bfa;font-weight:600;text-shadow:0 0 8px #0a0f1e" id="kgTileLabel">Loading…</div>
-          </div>
+    </div>
+
+    <!-- Col 3: Knowledge Graph full height -->
+    <div class="chart-card kg-tile" id="kgTile" onclick="openKG()" style="cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s;display:flex;flex-direction:column" title="Click to open Knowledge Graph">
+      <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <span>Knowledge Graph</span>
+        <span style="font-size:0.7rem;color:#7c3aed;font-weight:600">⛶ Fullscreen</span>
+      </div>
+      <div id="kgPreview" style="flex:1;position:relative;overflow:hidden;background:#060a12;border-radius:8px;min-height:0">
+        <svg id="kgMiniSvg" style="position:absolute;inset:0;width:100%;height:100%;display:block"></svg>
+        <div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;pointer-events:none">
+          <div style="font-size:0.7rem;color:#a78bfa;font-weight:600;text-shadow:0 0 8px #0a0f1e" id="kgTileLabel">Loading…</div>
         </div>
       </div>
     </div>
-    <img src="ground control.jpg" alt="Ground Control" style="height:100%;max-height:220px;width:auto;border-radius:12px;object-fit:cover;align-self:stretch">
+
+    <!-- Col 4: Image + Status stacked -->
+    <div class="col-stack" style="animation-delay:.15s">
+      <img src="ground control.jpg" alt="Ground Control" style="flex:1;min-height:0;max-height:200px;width:auto;border-radius:12px;object-fit:cover;align-self:stretch">
+      <div class="chart-card" style="display:flex;flex-direction:column;flex-shrink:0">
+        <div class="chart-title">Status Distribution</div>
+        <div class="chart-inner" style="height:120px"><canvas id="statusChart"></canvas></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Hidden state containers for filters (driven by column header buttons) -->
@@ -269,6 +281,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
 <script>
 // ── Particles ──────────────────────────────────────────────────────────
@@ -1656,6 +1669,11 @@ var KG = (function(){
     var wrap=document.getElementById('kg3dWrap');
     wrap.innerHTML='';
 
+    if(typeof ForceGraph3D==='undefined'){
+      wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-family:Inter,sans-serif;font-size:0.85rem">3D library loading… try again in a moment.</div>';
+      return;
+    }
+
     // ── Fractal background canvas (WebGL fragment shader) ──────────────────
     var fCanvas=document.createElement('canvas');
     fCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none';
@@ -1713,11 +1731,6 @@ var KG = (function(){
     window._kgNd=fd.nodes; window._kgLd=fd.links;
     document.getElementById('kg-edge-count').textContent=fd.nodes.length+' nodes · '+fd.links.length+' edges';
 
-    if(typeof ForceGraph3D==='undefined'){
-      wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-family:Inter,sans-serif;font-size:0.85rem">3D library loading… try again in a moment.</div>';
-      return;
-    }
-
     // Deep copy to avoid 3d-force-graph mutating shared objects
     var gData={
       nodes: fd.nodes.map(n=>({...n})),
@@ -1759,8 +1772,7 @@ var KG = (function(){
       var scene=graph3d.scene&&graph3d.scene();
       if(!scene){ if(++_rocketInit<30)setTimeout(tryAddRocket,200); return; }
       try{
-        // THREE is bundled inside 3d-force-graph — access via graph renderer
-        var T=graph3d.renderer&&graph3d.renderer().info?THREE:(window.THREE||null);
+        var T=THREE; // loaded globally from cdn
         if(!T){console.warn('THREE not available'); return;}
         var M=T.MeshBasicMaterial;
         var rocket=new T.Group();
