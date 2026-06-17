@@ -223,12 +223,10 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
           <span>Knowledge Graph</span>
           <span style="font-size:0.7rem;color:#7c3aed;font-weight:600">⛶ Fullscreen</span>
         </div>
-        <div class="chart-inner" id="kgPreview" style="display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 60%,rgba(124,58,237,0.18) 0%,transparent 70%);border-radius:8px;position:relative;overflow:hidden">
-          <svg id="kgMiniSvg" width="100%" height="100%" style="position:absolute;inset:0"></svg>
-          <div style="position:relative;z-index:2;text-align:center;pointer-events:none">
-            <div style="font-size:2rem;margin-bottom:6px">🕸</div>
-            <div style="font-size:0.78rem;color:#a78bfa;font-weight:600" id="kgTileLabel">Loading…</div>
-            <div style="font-size:0.65rem;color:#475569;margin-top:3px">Missions · Categories · Tags · Evangelists</div>
+        <div class="chart-inner" id="kgPreview" style="position:relative;overflow:hidden;background:#060a12;border-radius:8px">
+          <svg id="kgMiniSvg" width="100%" height="100%" style="display:block"></svg>
+          <div id="kgTileBadge" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;pointer-events:none">
+            <div style="font-size:0.7rem;color:#a78bfa;font-weight:600;text-shadow:0 0 8px #0a0f1e" id="kgTileLabel">Loading…</div>
           </div>
         </div>
       </div>
@@ -443,6 +441,7 @@ async function init(){
       var data=JSON.parse(cached);
       if(data.portfolio&&data.portfolio.length&&data.ucr&&data.ucr.length){
         if(data.jira&&data.jira.length){VAL_MAP=parseJira(data.jira);}
+        if(data.loadTimes){Object.assign(_fileLoadTimes,data.loadTimes);}
         renderFileSources(data.fileNames||{});
         processData(data.portfolio,data.ucr);
         // Refresh in background silently
@@ -498,9 +497,9 @@ async function fetchAndCache(showIndicator){
 }
 
 function saveCache(portfolio,ucr,jira,fns){
-  try{localStorage.setItem(CACHE_KEY,JSON.stringify({portfolio:portfolio||[],ucr:ucr||[],jira:jira||[],fileNames:fns||{}}));}
+  try{localStorage.setItem(CACHE_KEY,JSON.stringify({portfolio:portfolio||[],ucr:ucr||[],jira:jira||[],fileNames:fns||{},loadTimes:_fileLoadTimes}));}
   catch(e){
-    try{localStorage.setItem(CACHE_KEY,JSON.stringify({portfolio:portfolio||[],ucr:ucr||[],jira:[],fileNames:fns||{}}));}
+    try{localStorage.setItem(CACHE_KEY,JSON.stringify({portfolio:portfolio||[],ucr:ucr||[],jira:[],fileNames:fns||{},loadTimes:_fileLoadTimes}));}
     catch(e2){}
   }
 }
@@ -1335,8 +1334,8 @@ init();
     <div id="kg-stat-tags"     style="font-size:0.68rem;padding:3px 10px;border-radius:12px;font-weight:600;background:#3a2a0a;color:#fbbf24"></div>
     <!-- 2D / 3D toggle -->
     <div style="margin-left:auto;display:flex;gap:4px;background:#1e293b;border-radius:8px;padding:3px">
-      <button id="kg-btn-2d" onclick="kgSetMode('2d')" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:#7c3aed;color:#fff">2D</button>
-      <button id="kg-btn-3d" onclick="kgSetMode('3d')" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:transparent;color:#64748b">3D</button>
+      <button id="kg-btn-2d" onclick="KG&&KG.setMode('2d')" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:#7c3aed;color:#fff">2D</button>
+      <button id="kg-btn-3d" onclick="KG&&KG.setMode('3d')" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:transparent;color:#64748b">3D</button>
     </div>
   </div>
   <!-- Legend + controls -->
@@ -1386,12 +1385,13 @@ init();
 // ── Knowledge Graph ─────────────────────────────────────────────────────────
 var KG = (function(){
   var KG_TYPE = {
-    mission:  {color:'#38bdf8', stroke:'#0284c7', rBase:5,  hex:0x38bdf8},
+    mission:  {color:'#38bdf8', stroke:'#0284c7', rBase:7,  hex:0x38bdf8},
     category: {color:'#4ade80', stroke:'#166534', rBase:18, hex:0x4ade80},
     coach:    {color:'#c084fc', stroke:'#7e22ce', rBase:13, hex:0xc084fc},
     tag:      {color:'#fbbf24', stroke:'#92400e', rBase:9,  hex:0xfbbf24},
   };
-  var STATUS_COLOR = {published:'#4ade80','in progress':'#38bdf8',draft:'#94a3b8',retired:'#f87171'};
+  var STATUS_COLOR = {published:'#4ade80','in progress':'#38bdf8',draft:'#94a3b8',retired:'#f87171',
+    Published:'#4ade80','In Progress':'#38bdf8',Draft:'#94a3b8',Retired:'#f87171','In Review':'#fbbf24'};
   var STATUS_HEX   = {published:0x4ade80,'in progress':0x38bdf8,draft:0x94a3b8,retired:0xf87171};
   var CAT_NORM = {
     'database and data management':'Database & Data Mgmt',
@@ -1468,7 +1468,59 @@ var KG = (function(){
     document.getElementById('kg-stat-coaches').textContent=ch+' Coaches';
     document.getElementById('kg-stat-tags').textContent=tc+' Tags';
     document.getElementById('kgTileLabel').textContent=mc+' missions · '+cc+' categories · '+ch+' coaches · '+tc+' tags';
-    built=true; return true;
+    built=true;
+    // render mini preview
+    setTimeout(renderMini, 100);
+    return true;
+  }
+
+  // ── Mini preview in tile ──────────────────────────────────────────────────
+  var miniSim=null;
+  function renderMini(){
+    var svgEl=document.getElementById('kgMiniSvg');
+    if(!svgEl||!allNodes.length)return;
+    var W=svgEl.clientWidth||240, H=svgEl.clientHeight||230;
+    var mini=d3.select('#kgMiniSvg').attr('viewBox','0 0 '+W+' '+H);
+    mini.selectAll('*').remove();
+
+    // Subsample: all categories/coaches + max 80 missions + max 20 tags
+    var cats=allNodes.filter(n=>n.type==='category');
+    var coaches=allNodes.filter(n=>n.type==='coach').slice(0,10);
+    var missions=allNodes.filter(n=>n.type==='mission').slice(0,80);
+    var tags=allNodes.filter(n=>n.type==='tag').slice(0,20);
+    var subset=new Set([...cats,...coaches,...missions,...tags].map(n=>n.id));
+    var mNodes=[...cats,...coaches,...missions,...tags].map(n=>({...n}));
+    var mLinks=allLinks.filter(l=>{
+      var s=typeof l.source==='object'?l.source.id:l.source;
+      var t=typeof l.target==='object'?l.target.id:l.target;
+      return subset.has(s)&&subset.has(t);
+    }).map(l=>({source:typeof l.source==='object'?l.source.id:l.source, target:typeof l.target==='object'?l.target.id:l.target, rel:l.rel}));
+
+    var g=mini.append('g');
+    var lSel=g.append('g').selectAll('line').data(mLinks).join('line')
+      .attr('stroke',d=>KG_TYPE[d.rel]?.color||'#334155').attr('stroke-opacity',0.3).attr('stroke-width',0.4);
+    var nSel=g.append('g').selectAll('circle').data(mNodes,d=>d.id).join('circle')
+      .attr('r',n=>{
+        if(n.type==='mission')return 2;
+        if(n.type==='category')return Math.min(8,4+Math.sqrt(n.count||0));
+        if(n.type==='coach')return Math.min(6,3+Math.sqrt(n.count||0));
+        return 2.5;
+      })
+      .attr('fill',n=>n.type==='mission'?(STATUS_COLOR[n.status]||STATUS_COLOR[n.status?.toLowerCase()]||'#38bdf8'):KG_TYPE[n.type]?.color||'#fff')
+      .attr('fill-opacity',0.85);
+
+    if(miniSim)miniSim.stop();
+    miniSim=d3.forceSimulation(mNodes)
+      .force('link',d3.forceLink(mLinks).id(d=>d.id).distance(d=>d.rel==='category'?30:d.rel==='coach'?25:18).strength(0.4))
+      .force('charge',d3.forceManyBody().strength(n=>n.type==='category'?-60:n.type==='coach'?-40:n.type==='mission'?-5:-20))
+      .force('center',d3.forceCenter(W/2,H/2))
+      .force('collide',d3.forceCollide().radius(n=>n.type==='mission'?3:n.type==='category'?9:5))
+      .alphaDecay(0.04)
+      .on('tick',function(){
+        lSel.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+        nSel.attr('cx',d=>d.x).attr('cy',d=>d.y);
+      });
+    miniSim.alpha(0.8).restart();
   }
 
   function filteredData(){
@@ -1606,8 +1658,8 @@ var KG = (function(){
       .width(wrap.clientWidth).height(wrap.clientHeight)
       .backgroundColor('#0a0f1e')
       .graphData(gData)
-      .nodeColor(n=>n.type==='mission'?(STATUS_COLOR[n.status]||'#38bdf8'):KG_TYPE[n.type].color)
-      .nodeVal(n=>n.type==='mission'?1:Math.max(3,nodeR(n)*0.8))
+      .nodeColor(n=>n.type==='mission'?(STATUS_COLOR[n.status]||STATUS_COLOR[n.status?.toLowerCase()]||'#38bdf8'):KG_TYPE[n.type]?.color||'#fff')
+      .nodeVal(n=>n.type==='mission'?3:Math.max(4,nodeR(n)*0.9))
       .nodeLabel(n=>n.label+(n.status?' · '+n.status:'')+(n.count?' ('+n.count+')':''))
       .nodeResolution(8)
       .linkColor(l=>KG_TYPE[l.rel]?.color||'#334155')
@@ -1618,10 +1670,11 @@ var KG = (function(){
         openDP(orig);
       })
       .onNodeHover(function(n){ wrap.style.cursor=n?'pointer':'default'; });
-
-    // Tune forces after graph is initialized
-    graph3d.d3Force('charge').strength(n=>n.type==='category'?-120:n.type==='coach'?-80:n.type==='mission'?-10:-60);
-    graph3d.d3Force('link').distance(l=>l.rel==='category'?80:l.rel==='coach'?60:40);
+    // tune forces
+    var chargeFn=graph3d.d3Force('charge');
+    var linkFn=graph3d.d3Force('link');
+    if(chargeFn&&chargeFn.strength) chargeFn.strength(n=>n.type==='category'?-120:n.type==='coach'?-80:n.type==='mission'?-10:-60);
+    if(linkFn&&linkFn.distance)     linkFn.distance(l=>l.rel==='category'?80:l.rel==='coach'?60:40);
   }
 
   // ── Shared helpers ────────────────────────────────────────────────────────
@@ -1709,6 +1762,7 @@ var KG = (function(){
       }
     },
     rebuildIfNeeded: function(){ built=false; },
+    buildPreview: function(){ if(!built)buildFromDashboard(); renderMini(); },
   };
 })();
 
@@ -1727,6 +1781,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(window.allMissions&&window.allMissions.length!==_prevLen){
       _prevLen=window.allMissions.length;
       KG.rebuildIfNeeded();
+      KG.buildPreview();
       document.getElementById('kgTileLabel').textContent=window.allMissions.length+' missions loaded — click to explore';
     }
   },1000);
