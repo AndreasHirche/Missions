@@ -55,10 +55,11 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 @media(max-width:1100px){.dashboard-main{grid-template-columns:140px 1fr 1fr}}
 @media(max-width:700px){.dashboard-main{grid-template-columns:1fr}}
 
-/* Compact layout: KPIs | Cat Coach | KG | Img Status  — stacked → side-by-side */
+/* Compact: tiles side-by-side, full width, equal columns */
+#top-panel.compact .dashboard-main{grid-template-columns:auto 1fr 1.4fr 1fr;gap:8px;margin-bottom:4px}
 #top-panel.compact .col-stack{flex-direction:row!important}
 #top-panel.compact .col-stack .chart-card{flex:1;min-width:0}
-#top-panel.compact .col-stack img{max-height:none;height:100%;max-height:100px}
+#top-panel.compact .col-stack img{max-height:100%!important;height:auto;width:auto}
 
 /* KPI sidebar - vertical, fills chart height */
 .kpis{display:flex;flex-direction:column;gap:8px}
@@ -194,6 +195,14 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="three.min.js"></script>
 <script src="3d-force-graph.min.js"></script>
+<script>
+// Ensure ForceGraph3D is accessible — some browser security contexts
+// prevent the UMD 'this' binding from setting globalThis
+if(typeof ForceGraph3D==='undefined'&&typeof exports!=='undefined'){
+  window.ForceGraph3D=exports.ForceGraph3D||exports.default||exports;
+}
+console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
+</script>
 </head>
 <body>
 <div class="grid-bg"></div>
