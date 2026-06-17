@@ -45,9 +45,7 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact header h1{font-size:1.1rem}
 #top-panel.compact header p{font-size:0.7rem}
 #top-panel.compact .file-sources{padding:2px 0 4px}
-#top-panel.compact .kg-tile .chart-inner{height:120px!important}
-/* KG compact: title + 120px chart = ~158px, matches cat+coach compact col */
-#top-panel.compact .kg-tile{height:auto}
+#top-panel.compact .kg-tile .chart-inner{height:auto!important;flex:1}
 .img-status-col{overflow:hidden}
 #top-panel.compact .chart-card{padding:8px 16px}
 
@@ -74,16 +72,18 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .header-search input:focus{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.05)}
 .result-count{font-size:0.75rem;color:var(--muted);white-space:nowrap}
 
-/* Dashboard grid — 3 columns: Cat+Coach defines height, KG+Img-Status stretch to match */
+/* Dashboard grid — all 3 cols same explicit height */
+:root{--tiles-h:420px;--tiles-compact-h:200px}
 .dashboard-main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;align-items:start}
 @media(max-width:900px){.dashboard-main{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.dashboard-main{grid-template-columns:1fr}}
-/* KG tile matches cat+coach height via align-self:stretch */
-.kg-tile,.img-status-col{align-self:stretch}
-.kg-tile{display:flex;flex-direction:column}
-/* Compact: all cols align-start, no stretching */
-#top-panel.compact .dashboard-main{align-items:start}
-#top-panel.compact .kg-tile,#top-panel.compact .img-status-col{align-self:auto}
+/* All cols same height */
+.cat-coach-col,.kg-tile,.img-status-col{height:var(--tiles-h);overflow:hidden}
+.kg-tile{display:flex;flex-direction:column;align-self:auto}
+/* Compact */
+#top-panel.compact .cat-coach-col,
+#top-panel.compact .kg-tile,
+#top-panel.compact .img-status-col{height:var(--tiles-compact-h)}
 
 /* Compact */
 #top-panel.compact .cat-coach-col{flex-direction:row!important;gap:8px}
@@ -105,19 +105,19 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 
 /* Charts panel — now direct children of dashboard-main */
 .charts{display:contents}
-.col-stack{display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.col-stack{display:flex;flex-direction:column;gap:12px}
 .chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:16px;flex-shrink:0}
 .chart-title{font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
 .chart-inner{position:relative;height:160px;overflow:hidden}
 /* img+status col */
-.img-status-col{display:flex;overflow:hidden;flex-direction:column;gap:12px}
-.img-status-col img{flex:1;min-height:60px;object-fit:cover;object-position:top;border-radius:12px;width:100%}
+.img-status-col{display:flex;flex-direction:column;gap:12px}
+.img-status-col img{flex:1;min-height:0;object-fit:cover;object-position:top;border-radius:12px;width:100%}
 .img-status-col .chart-card{flex-shrink:0}
 /* compact: image beside status */
-#top-panel.compact .img-status-col{flex-direction:row!important;gap:8px;align-self:stretch}
-#top-panel.compact .img-status-col img{flex:1;height:auto!important;min-height:0;width:auto;border-radius:8px}
+#top-panel.compact .img-status-col{flex-direction:row!important;gap:8px}
+#top-panel.compact .img-status-col img{flex:1;height:100%!important;min-height:0;width:auto;border-radius:8px}
 #top-panel.compact .img-status-col .chart-card{flex:1;min-width:0;display:flex;flex-direction:column}
-#top-panel.compact .img-status-col .chart-card .chart-inner{flex:1;height:auto!important;min-height:60px}
+#top-panel.compact .img-status-col .chart-card .chart-inner{flex:1;height:auto!important;min-height:40px}
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
 .filters select{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 14px;font-family:'Inter',sans-serif;font-size:0.82rem;outline:none;transition:border-color .2s}
 .filters select:focus{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.05)}
