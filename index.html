@@ -865,8 +865,8 @@ function processData(portfolio,ucr){
   renderKPIs();
   renderCharts();
   applyFilters();
-  // Re-measure top panel height after charts render — only if not yet stable
-  setTimeout(function(){if(window.measureTopFn&&!window._topMeasured)window.measureTopFn();},300);
+  // Re-measure after charts render
+  setTimeout(function(){if(window.measureTopFn)window.measureTopFn();},300);
 }
 
 
@@ -1978,59 +1978,76 @@ document.addEventListener('DOMContentLoaded',function(){
   // Top panel compress on scroll
   var topPanel=document.getElementById('top-panel');
   var tblScroll=document.querySelector('.tbl-scroll');
-  var scrollArea=document.getElementById('scroll-area');
-  var topFull=0, topCompact=0, measured=false;
+  // ── Top panel compress ──────────────────────────────────────────────────
+  var topPanel   = document.getElementById('top-panel');
+  var scrollArea = document.getElementById('scroll-area');
+  var tblScroll  = document.querySelector('.tbl-scroll');
+  var topFull = 0;   // frozen once, never changed again
 
-  function updateTableHeight(panelH){
-    var h=window.innerHeight-(panelH||topFull);
-    scrollArea.style.height=Math.max(80,h)+'px';
-    document.documentElement.style.setProperty('--top-h',(panelH||topFull)+'px');
+  function applyHeight(panelH){
+    topPanel.style.height = panelH + 'px';
+    scrollArea.style.height = Math.max(80, window.innerHeight - panelH) + 'px';
+    document.documentElement.style.setProperty('--top-h', panelH + 'px');
+  }
+
+  function lockFull(){
+    // Temporarily remove explicit height so panel auto-sizes
+    topPanel.style.transition = 'none';
+    topPanel.style.height = '';
+    topPanel.offsetHeight; // reflow
+    topFull = topPanel.offsetHeight;
+    topPanel.style.height = topFull + 'px';
+    topPanel.style.transition = '';
+    applyHeight(topFull);
   }
 
   function setCompact(compact){
-    topPanel.style.transition='none';
+    topPanel.style.transition = 'none';
     if(compact){
       topPanel.classList.add('compact');
-      topPanel.style.height='';
+      topPanel.style.height = '';
       topPanel.offsetHeight;
-      topCompact=topPanel.offsetHeight;
-      topPanel.style.height=topCompact+'px';
-      topPanel.offsetHeight;
-      topPanel.style.transition='';
-      updateTableHeight(topCompact);
+      var h = topPanel.offsetHeight;
+      topPanel.style.height = h + 'px';
+      topPanel.style.transition = '';
+      applyHeight(h);
     } else {
       topPanel.classList.remove('compact');
-      topPanel.style.height=topFull+'px'; // always use frozen topFull
-      topPanel.offsetHeight;
-      topPanel.style.transition='';
-      updateTableHeight(topFull);
+      topPanel.style.transition = '';
+      applyHeight(topFull);   // always restore frozen value
     }
   }
 
-  function measureTop(){
-    if(measured) return;
-    if(topPanel.classList.contains('compact')) return;
-    topPanel.style.transition='none';
-    topPanel.style.height='';
-    topPanel.offsetHeight;
-    var h=topPanel.offsetHeight;
-    if(h>50){ topFull=h; measured=true; }
-    topPanel.style.height=topFull+'px';
-    topPanel.offsetHeight;
-    topPanel.style.transition='';
-    updateTableHeight(topFull);
+  // Measure once — wait until category chart canvas has a non-zero height
+  function waitAndMeasure(){
+    var canvas = document.getElementById('categoryChart');
+    if(!canvas || canvas.offsetHeight < 10){
+      setTimeout(waitAndMeasure, 150);
+      return;
+    }
+    if(topFull > 0) return; // already locked
+    lockFull();
   }
 
-  tblScroll&&tblScroll.addEventListener('scroll',function(){
-    if(tblScroll.scrollTop>0 && !topPanel.classList.contains('compact')) setCompact(true);
-    else if(tblScroll.scrollTop<=0 && topPanel.classList.contains('compact')) setCompact(false);
-  },{passive:true});
+  // Scroll trigger
+  tblScroll && tblScroll.addEventListener('scroll', function(){
+    if(topFull === 0) return;
+    if(tblScroll.scrollTop > 0 && !topPanel.classList.contains('compact')) setCompact(true);
+    else if(tblScroll.scrollTop <= 0 && topPanel.classList.contains('compact')) setCompact(false);
+  }, {passive:true});
 
-  window.measureTopFn=measureTop;
-  window._topMeasured=false;
-  window.addEventListener('resize',function(){measured=false;window._topMeasured=false;topFull=0;measureTop();});
-  setTimeout(measureTop,200);
-  setTimeout(function(){if(!measured)measureTop(); window._topMeasured=true;},1500);
+  // Window resize: re-lock (charts are still rendered)
+  window.addEventListener('resize', function(){
+    if(topPanel.classList.contains('compact')) return;
+    topFull = 0;
+    lockFull();
+  });
+
+  // Expose for processData callback
+  window.measureTopFn = function(){ if(topFull===0) waitAndMeasure(); };
+  window._topMeasured = false;
+
+  waitAndMeasure();
 });
 </script>
 </body>
