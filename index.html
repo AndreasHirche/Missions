@@ -865,8 +865,8 @@ function processData(portfolio,ucr){
   renderKPIs();
   renderCharts();
   applyFilters();
-  // Re-measure top panel height after charts render
-  setTimeout(function(){if(window.measureTopFn)window.measureTopFn();},300);
+  // Re-measure top panel height after charts render — only if not yet stable
+  setTimeout(function(){if(window.measureTopFn&&!window._topMeasured)window.measureTopFn();},300);
 }
 
 
@@ -1979,7 +1979,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var topPanel=document.getElementById('top-panel');
   var tblScroll=document.querySelector('.tbl-scroll');
   var scrollArea=document.getElementById('scroll-area');
-  var topFull=0, topCompact=0;
+  var topFull=0, topCompact=0, measured=false;
 
   function updateTableHeight(panelH){
     var h=window.innerHeight-(panelH||topFull);
@@ -1988,36 +1988,38 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   function setCompact(compact){
-    // Suppress transition while measuring
     topPanel.style.transition='none';
     if(compact){
       topPanel.classList.add('compact');
-      topPanel.style.height='';
+      topPanel.style.height=''; // let CSS rules define compact height
+      topPanel.offsetHeight;    // force reflow
       topCompact=topPanel.offsetHeight;
       topPanel.style.height=topCompact+'px';
+      topPanel.offsetHeight;
+      topPanel.style.transition='';
+      updateTableHeight(topCompact);
     } else {
       topPanel.classList.remove('compact');
       topPanel.style.height=topFull+'px';
+      topPanel.offsetHeight;
+      topPanel.style.transition='';
+      updateTableHeight(topFull);
     }
-    // Re-enable transition after layout
-    topPanel.offsetHeight; // force reflow
-    topPanel.style.transition='';
-    updateTableHeight(topPanel.classList.contains('compact')?topCompact:topFull);
   }
 
   function measureTop(){
-    var wasCompact=topPanel.classList.contains('compact');
-    topPanel.classList.remove('compact');
-    topPanel.style.height='';
+    if(topPanel.classList.contains('compact')) return; // never re-measure while compact
+    var prev=topPanel.style.height;
     topPanel.style.transition='none';
-    topFull=topPanel.offsetHeight;
+    topPanel.style.height=''; // auto — measure natural height
+    topPanel.offsetHeight;
+    var h=topPanel.offsetHeight;
+    if(h>0) topFull=h;        // only update if valid
+    topPanel.style.height=topFull+'px';
+    topPanel.offsetHeight;
     topPanel.style.transition='';
-    if(wasCompact){
-      setCompact(true);
-    } else {
-      topPanel.style.height=topFull+'px';
-      updateTableHeight(topFull);
-    }
+    measured=true;
+    updateTableHeight(topFull);
   }
 
   tblScroll&&tblScroll.addEventListener('scroll',function(){
@@ -2026,9 +2028,10 @@ document.addEventListener('DOMContentLoaded',function(){
   },{passive:true});
 
   window.measureTopFn=measureTop;
-  window.addEventListener('resize',function(){topFull=0;measureTop();});
+  window._topMeasured=false;
+  window.addEventListener('resize',function(){measured=false;window._topMeasured=false;topFull=0;measureTop();});
   setTimeout(measureTop,200);
-  setTimeout(measureTop,1500);
+  setTimeout(function(){if(!measured)measureTop(); window._topMeasured=true;},1500);
 });
 </script>
 </body>
