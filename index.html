@@ -22,11 +22,9 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 /* Top panel */
 #top-panel{background:var(--bg);z-index:10;overflow:hidden;
   transition:height .4s cubic-bezier(.4,0,.2,1)}
-#top-panel .wrap{transition:transform .4s cubic-bezier(.4,0,.2,1);transform-origin:top left}
-#top-panel.compact .wrap{transform:scaleY(0.5)}
 #top-panel.compact{border-bottom:1px solid var(--border)}
 
-/* Scroll area — only tbl-scroll scrolls */
+/* Scroll area */
 #scroll-area{overflow:hidden}
 
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;
@@ -38,10 +36,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overf
 .particles{position:fixed;inset:0;pointer-events:none;z-index:0}
 .particle{position:absolute;border-radius:50%;animation:float linear infinite}
 @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-20px) translateX(40px);opacity:0}}
-.wrap{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:0 16px 32px}
+.wrap{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:0 16px 8px}
+.wrap-table{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:0 4px 4px}
 
 /* Header */
-header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;position:relative;padding-top:20px}
+header{display:flex;align-items:center;gap:16px;margin-bottom:8px;flex-wrap:wrap;position:relative;padding-top:12px}
 .header-brand{flex:0 0 auto}
 header h1{font-size:1.9rem;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;transition:font-size .25s}
 header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity .2s}
@@ -52,7 +51,7 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .result-count{font-size:0.75rem;color:var(--muted);white-space:nowrap}
 
 /* Dashboard main: KPI sidebar + charts */
-.dashboard-main{display:grid;grid-template-columns:140px 1fr 1.4fr auto;gap:16px;margin-bottom:28px;align-items:stretch}
+.dashboard-main{display:grid;grid-template-columns:140px 1fr 1.4fr auto;gap:12px;margin-bottom:8px;align-items:stretch}
 @media(max-width:1100px){.dashboard-main{grid-template-columns:140px 1fr 1fr}}
 @media(max-width:700px){.dashboard-main{grid-template-columns:1fr}}
 
@@ -187,6 +186,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.179.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
 </head>
 <body>
@@ -286,7 +286,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 </div><!-- /#top-panel -->
 
 <div id="scroll-area">
-<div class="wrap">
+<div class="wrap-table">
 
   <!-- Count + active filter chips -->
   <div class="table-toolbar">
@@ -833,9 +833,7 @@ function processData(portfolio,ucr){
   renderCharts();
   applyFilters();
   // Re-measure top panel height after charts render
-  setTimeout(function(){
-    if(window.measureTopFn) window.measureTopFn(document.getElementById('top-panel').classList.contains('compact'));
-  },300);
+  setTimeout(function(){if(window.measureTopFn)window.measureTopFn();},300);
 }
 
 
@@ -1777,29 +1775,8 @@ var KG = (function(){
     (function tryAddRocket(){
       var scene=graph3d.scene&&graph3d.scene();
       if(!scene){ if(++_rocketInit<40)setTimeout(tryAddRocket,150); return; }
-      // Extract THREE from the renderer's constructor namespace
-      var renderer=graph3d.renderer&&graph3d.renderer();
-      var T=null;
-      try{
-        // 3d-force-graph exposes THREE via the scene's constructor chain
-        var testObj=new scene.constructor();
-        if(testObj&&testObj.isScene) T=null;
-      }catch(e){}
-      // Best approach: create a test mesh using a constructor from an existing scene object
-      if(!T){
-        try{
-          // Get THREE by traversing the scene children constructors
-          var cam=graph3d.camera&&graph3d.camera();
-          if(cam){
-            var proto=Object.getPrototypeOf(cam);
-            while(proto&&!proto.constructor.Vector3){proto=Object.getPrototypeOf(proto);}
-            T=proto&&proto.constructor;
-          }
-        }catch(e){}
-      }
-      // Simplest fallback: just try global THREE (loaded by script tag)
-      if(!T) T=window.THREE;
-      if(!T){ console.warn('THREE not found'); return; }
+      var T=window.THREE;
+      if(!T){ console.warn('THREE not available — load three.min.js first'); return; }
       try{
         var M=T.MeshBasicMaterial;
         var rocket=new T.Group();
@@ -1830,8 +1807,8 @@ var KG = (function(){
           orbit.rotation.y+=0.006;
           flameMat.opacity=0.7+0.2*Math.sin(tick3+=0.12);
         })();
-        console.log('Rocket added to 3D scene');
-      }catch(e){ console.warn('KG rocket failed:',e.message); }
+        console.log('🚀 Rocket added to scene');
+      }catch(e){ console.warn('Rocket failed:',e.message); }
     })();
   }
 
@@ -1944,45 +1921,41 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   },1000);
 
-  // Shrink top panel on scroll
+  // Top panel compress on scroll
   var topPanel=document.getElementById('top-panel');
-  var scrollArea=document.getElementById('scroll-area');
-  var topFull=0, topCompact=0;
+  var tblScroll=document.querySelector('.tbl-scroll');
+  var topFull=0;
 
-  function measureTop(isCompact){
+  function setCompact(compact){
+    if(compact){
+      topPanel.classList.add('compact');
+      topPanel.style.height=Math.round(topFull*0.5)+'px';
+    } else {
+      topPanel.classList.remove('compact');
+      topPanel.style.height=topFull+'px';
+    }
+    var panelH=parseInt(topPanel.style.height)||topFull;
+    if(tblScroll) tblScroll.style.maxHeight=Math.max(120,window.innerHeight-panelH-4)+'px';
+    document.documentElement.style.setProperty('--top-h',panelH+'px');
+  }
+
+  function measureTop(){
+    var wasCompact=topPanel.classList.contains('compact');
     topPanel.classList.remove('compact');
     topPanel.style.height='';
     topFull=topPanel.scrollHeight;
-    if(isCompact){
-      topCompact=Math.round(topFull*0.5);
-      topPanel.style.height=topCompact+'px';
-      topPanel.classList.add('compact');
-      document.documentElement.style.setProperty('--top-h',topCompact+'px');
-    } else {
-      topPanel.style.height=topFull+'px';
-      topCompact=0;
-      document.documentElement.style.setProperty('--top-h',topFull+'px');
-    }
+    setCompact(wasCompact);
   }
 
-  scrollArea.addEventListener('scroll',function(){
-    if(scrollArea.scrollTop>40 && !topPanel.classList.contains('compact')){
-      topCompact=Math.round(topFull*0.5);
-      topPanel.style.height=topCompact+'px';
-      topPanel.classList.add('compact');
-      document.documentElement.style.setProperty('--top-h',topCompact+'px');
-    } else if(scrollArea.scrollTop<=40 && topPanel.classList.contains('compact')){
-      topPanel.style.height=topFull+'px';
-      topPanel.classList.remove('compact');
-      document.documentElement.style.setProperty('--top-h',topFull+'px');
-    }
+  tblScroll&&tblScroll.addEventListener('scroll',function(){
+    if(tblScroll.scrollTop>0 && !topPanel.classList.contains('compact')) setCompact(true);
+    else if(tblScroll.scrollTop<=0 && topPanel.classList.contains('compact')) setCompact(false);
   },{passive:true});
 
   window.measureTopFn=measureTop;
-  window.addEventListener('resize',function(){measureTop(topPanel.classList.contains('compact'));});
-  // Measure after initial render and again after data loads
-  setTimeout(function(){measureTop(false);},200);
-  setTimeout(function(){measureTop(topPanel.classList.contains('compact'));},1500);
+  window.addEventListener('resize',measureTop);
+  setTimeout(measureTop,200);
+  setTimeout(measureTop,1500);
 });
 </script>
 </body>
