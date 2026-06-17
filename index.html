@@ -38,10 +38,6 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact header h1{font-size:1.1rem}
 #top-panel.compact header p{font-size:0.7rem}
 #top-panel.compact .file-sources{padding:2px 0 6px}
-#top-panel.compact .dashboard-main{margin-bottom:4px;gap:8px}
-#top-panel.compact .col-stack{flex-direction:row!important;gap:8px}
-#top-panel.compact .col-stack .chart-card{flex:1;min-width:0}
-#top-panel.compact .col-stack img{max-height:none!important;height:100%;flex:0 0 auto;width:auto}
 #top-panel.compact .kg-tile .chart-inner{height:80px!important}
 
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;
@@ -53,7 +49,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overf
 .particles{position:fixed;inset:0;pointer-events:none;z-index:0}
 .particle{position:absolute;border-radius:50%;animation:float linear infinite}
 @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-20px) translateX(40px);opacity:0}}
-.wrap{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:0 16px 8px}
+.wrap{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:0 16px 8px;overflow:hidden}
 .wrap-table{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:0 4px 4px}
 
 /* Header */
@@ -74,9 +70,9 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 
 /* Compact: tiles side-by-side, full width, equal columns */
 #top-panel.compact .dashboard-main{grid-template-columns:auto 1fr 1.4fr 1fr;gap:8px;margin-bottom:4px}
-#top-panel.compact .col-stack{flex-direction:row!important}
+#top-panel.compact .col-stack{flex-direction:row!important;gap:8px;min-width:0}
 #top-panel.compact .col-stack .chart-card{flex:1;min-width:0}
-#top-panel.compact .col-stack img{max-height:100%!important;height:auto;width:auto}
+#top-panel.compact .col-stack img{max-height:100%!important;height:auto;width:auto;min-width:0;flex:0 0 auto}
 
 /* KPI sidebar - vertical, fills chart height */
 .kpis{display:flex;flex-direction:column;gap:8px}
@@ -1986,21 +1982,16 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   function setCompact(compact){
-    topPanel.style.height=''; // let content flow first
     if(compact){
       topPanel.classList.add('compact');
-      // measure natural compact height (CSS rules already applied)
-      requestAnimationFrame(function(){
-        topCompact=topPanel.scrollHeight;
-        topPanel.style.height=topCompact+'px';
-        updateTableHeight(topCompact);
-      });
+      // measure synchronously — no rAF — before any transition runs
+      topCompact=topPanel.offsetHeight;
+      topPanel.style.height=topCompact+'px';
+      updateTableHeight(topCompact);
     } else {
       topPanel.classList.remove('compact');
-      requestAnimationFrame(function(){
-        topPanel.style.height=topFull+'px';
-        updateTableHeight(topFull);
-      });
+      topPanel.style.height=topFull+'px';
+      updateTableHeight(topFull);
     }
   }
 
@@ -2008,15 +1999,17 @@ document.addEventListener('DOMContentLoaded',function(){
     var wasCompact=topPanel.classList.contains('compact');
     topPanel.classList.remove('compact');
     topPanel.style.height='';
-    requestAnimationFrame(function(){
-      topFull=topPanel.scrollHeight;
-      if(wasCompact){
-        setCompact(true);
-      } else {
-        topPanel.style.height=topFull+'px';
-        updateTableHeight(topFull);
-      }
-    });
+    // suppress transition while measuring so offsetHeight is stable
+    topPanel.style.transition='none';
+    // offsetHeight (not scrollHeight) — unaffected by overflow
+    topFull=topPanel.offsetHeight;
+    topPanel.style.transition='';
+    if(wasCompact){
+      setCompact(true);
+    } else {
+      topPanel.style.height=topFull+'px';
+      updateTableHeight(topFull);
+    }
   }
 
   tblScroll&&tblScroll.addEventListener('scroll',function(){
