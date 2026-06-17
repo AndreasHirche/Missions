@@ -10,7 +10,8 @@
 <style>
 :root{--bg:#06070f;--glass:rgba(255,255,255,0.05);--border:rgba(255,255,255,0.1);--purple:#7c3aed;--cyan:#06b6d4;--text:#e2e8f0;--muted:#94a3b8}
 /* Global scrollbar */
-html,body{height:100%;overflow:hidden}
+html,body{height:100%;overflow:hidden;display:flex;flex-direction:column}
+:root{--top-h:50vh}
 :root{--top-h:520px}
 html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 ::-webkit-scrollbar{width:7px;height:7px}
@@ -19,11 +20,11 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 ::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
 ::-webkit-scrollbar-corner{background:transparent}
 
-/* Top panel */
-#top-panel{background:var(--bg);z-index:10;overflow:hidden;transition:height .4s cubic-bezier(.4,0,.2,1);border-bottom:1px solid transparent;transition:height .4s cubic-bezier(.4,0,.2,1),border-color .3s}
+/* Top panel — shrinks content via CSS, no JS height needed */
+#top-panel{background:var(--bg);z-index:10;overflow:hidden;flex-shrink:0;border-bottom:1px solid transparent;transition:border-color .3s}
 #top-panel.compact{border-color:var(--border)}
-/* Scroll area */
-#scroll-area{overflow:hidden;display:flex;flex-direction:column}
+/* Scroll area fills remaining height automatically */
+#scroll-area{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
 #scroll-area .wrap-table{flex:1;display:flex;flex-direction:column;padding:0 4px 4px;min-height:0}
 #scroll-area .table-toolbar{flex-shrink:0}
 #scroll-area .tbl-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
@@ -45,7 +46,7 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact .file-sources{padding:2px 0 6px}
 #top-panel.compact .kg-tile .chart-inner{height:80px!important}
 
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);flex:1;display:flex;flex-direction:column;
   background-image:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(124,58,237,0.25) 0%,transparent 70%),
     radial-gradient(ellipse 40% 40% at 80% 80%,rgba(6,182,212,0.1) 0%,transparent 60%)}
 .grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
@@ -1975,79 +1976,16 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   },1000);
 
-  // Top panel compress on scroll
-  var topPanel=document.getElementById('top-panel');
-  var tblScroll=document.querySelector('.tbl-scroll');
-  // ── Top panel compress ──────────────────────────────────────────────────
-  var topPanel   = document.getElementById('top-panel');
-  var scrollArea = document.getElementById('scroll-area');
-  var tblScroll  = document.querySelector('.tbl-scroll');
-  var topFull = 0;   // frozen once, never changed again
+  // ── Top panel compress — pure CSS class toggle, no JS heights ────────────
+  var topPanel  = document.getElementById('top-panel');
+  var tblScroll = document.querySelector('.tbl-scroll');
 
-  function applyHeight(panelH){
-    topPanel.style.height = panelH + 'px';
-    scrollArea.style.height = Math.max(80, window.innerHeight - panelH) + 'px';
-    document.documentElement.style.setProperty('--top-h', panelH + 'px');
-  }
-
-  function lockFull(){
-    // Temporarily remove explicit height so panel auto-sizes
-    topPanel.style.transition = 'none';
-    topPanel.style.height = '';
-    topPanel.offsetHeight; // reflow
-    topFull = topPanel.offsetHeight;
-    topPanel.style.height = topFull + 'px';
-    topPanel.style.transition = '';
-    applyHeight(topFull);
-  }
-
-  function setCompact(compact){
-    topPanel.style.transition = 'none';
-    if(compact){
-      topPanel.classList.add('compact');
-      topPanel.style.height = '';
-      topPanel.offsetHeight;
-      var h = topPanel.offsetHeight;
-      topPanel.style.height = h + 'px';
-      topPanel.style.transition = '';
-      applyHeight(h);
-    } else {
-      topPanel.classList.remove('compact');
-      topPanel.style.transition = '';
-      applyHeight(topFull);   // always restore frozen value
-    }
-  }
-
-  // Measure once — wait until category chart canvas has a non-zero height
-  function waitAndMeasure(){
-    var canvas = document.getElementById('categoryChart');
-    if(!canvas || canvas.offsetHeight < 10){
-      setTimeout(waitAndMeasure, 150);
-      return;
-    }
-    if(topFull > 0) return; // already locked
-    lockFull();
-  }
-
-  // Scroll trigger
   tblScroll && tblScroll.addEventListener('scroll', function(){
-    if(topFull === 0) return;
-    if(tblScroll.scrollTop > 0 && !topPanel.classList.contains('compact')) setCompact(true);
-    else if(tblScroll.scrollTop <= 0 && topPanel.classList.contains('compact')) setCompact(false);
+    if(tblScroll.scrollTop > 0) topPanel.classList.add('compact');
+    else topPanel.classList.remove('compact');
   }, {passive:true});
 
-  // Window resize: re-lock (charts are still rendered)
-  window.addEventListener('resize', function(){
-    if(topPanel.classList.contains('compact')) return;
-    topFull = 0;
-    lockFull();
-  });
-
-  // Expose for processData callback
-  window.measureTopFn = function(){ if(topFull===0) waitAndMeasure(); };
-  window._topMeasured = false;
-
-  waitAndMeasure();
+  window.measureTopFn = function(){};
 });
 </script>
 </body>
