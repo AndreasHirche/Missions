@@ -22,7 +22,7 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 /* Top panel */
 #top-panel{background:var(--bg);z-index:10;overflow:hidden;transition:height .4s cubic-bezier(.4,0,.2,1)}
 #top-panel .wrap{transition:transform .4s cubic-bezier(.4,0,.2,1);transform-origin:top center}
-#top-panel.compact .wrap{transform:scaleY(0.5)}
+#top-panel.compact .wrap{transform:scale(0.5)}
 #top-panel.compact{border-bottom:1px solid var(--border)}
 /* Scroll area */
 #scroll-area{overflow:hidden}
@@ -187,8 +187,8 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
+<script src="three.min.js"></script>
+<script src="3d-force-graph.min.js"></script>
 </head>
 <body>
 <div class="grid-bg"></div>
@@ -291,7 +291,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 
   <!-- Count + active filter chips -->
   <div class="table-toolbar">
-    <span class="result-count" id="resultCount"></span>
+    <span class="result-count" id="resultCount" style="display:none"></span>
     <div class="chip-row" id="chipRow"></div>
   </div>
 
@@ -1396,10 +1396,10 @@ init();
   <!-- Legend + controls -->
   <div style="display:flex;gap:8px;align-items:center;padding:5px 14px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
     <span style="font-size:0.67rem;color:#475569;font-weight:600">Show:</span>
-    <div class="kg-li on" data-t="mission"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#38bdf8"></div>Mission</div>
-    <div class="kg-li on" data-t="category"   onclick="kgToggleT(this)"><div class="kg-ld" style="background:#4ade80"></div>Category</div>
-    <div class="kg-li on" data-t="coach"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#c084fc"></div>Coach</div>
-    <div class="kg-li on" data-t="tag"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fbbf24"></div>Tag</div>
+    <div class="kg-li on" data-t="mission"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#38bdf8"></div>Mission <span id="kg-cnt-mission" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="category"   onclick="kgToggleT(this)"><div class="kg-ld" style="background:#4ade80"></div>Category <span id="kg-cnt-category" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="coach"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#c084fc"></div>Coach <span id="kg-cnt-coach" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="tag"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fbbf24"></div>Tag <span id="kg-cnt-tag" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
     <div style="position:relative;display:inline-flex;align-items:center">
@@ -1521,6 +1521,11 @@ var KG = (function(){
     document.getElementById('kg-stat-cats').textContent=cc+' Categories';
     document.getElementById('kg-stat-coaches').textContent=ch+' Coaches';
     document.getElementById('kg-stat-tags').textContent=tc+' Tags';
+    // Also update the toggle button counts
+    var cm=document.getElementById('kg-cnt-mission'); if(cm)cm.textContent=mc;
+    var cc2=document.getElementById('kg-cnt-category'); if(cc2)cc2.textContent=cc;
+    var ch2=document.getElementById('kg-cnt-coach'); if(ch2)ch2.textContent=ch;
+    var ct=document.getElementById('kg-cnt-tag'); if(ct)ct.textContent=tc;
     document.getElementById('kgTileLabel').textContent=mc+' missions · '+cc+' categories · '+ch+' coaches · '+tc+' tags';
     built=true;
     // render mini preview — wait for layout
@@ -1946,15 +1951,16 @@ document.addEventListener('DOMContentLoaded',function(){
   function setCompact(compact){
     if(compact){
       topPanel.classList.add('compact');
+      // scale(0.5) visually halves content but layout box stays full size
+      // set height to half so the panel actually takes half the space
       topPanel.style.height=Math.round(topFull*0.5)+'px';
     } else {
       topPanel.classList.remove('compact');
       topPanel.style.height=topFull+'px';
     }
     var panelH=parseInt(topPanel.style.height)||topFull;
-    // horizontal bar always visible — set tbl-scroll height so it fills rest of viewport
-    var paginH=document.getElementById('pagination').offsetHeight||40;
-    var toolbarH=document.querySelector('.table-toolbar')?.offsetHeight||24;
+    var paginH=(document.getElementById('pagination')||{offsetHeight:40}).offsetHeight||40;
+    var toolbarH=(document.querySelector('.table-toolbar')||{offsetHeight:24}).offsetHeight||24;
     if(tblScroll) tblScroll.style.maxHeight=Math.max(120,window.innerHeight-panelH-paginH-toolbarH-12)+'px';
     document.documentElement.style.setProperty('--top-h',panelH+'px');
   }
