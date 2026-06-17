@@ -246,32 +246,31 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
 <div id="top-panel">
 <div class="wrap">
   <header class="fade-in">
-    <div class="header-brand">
-      <h1>Missions Dashboard</h1>
-      <p style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="color:var(--muted);font-size:0.82rem">SAP Discovery Center</span>
-        <span style="color:#334155">·</span>
-        <span class="file-src" id="fsr-portfolio" onclick="triggerFileUpdate('portfolio')" title="Click to reload" style="padding:1px 8px 1px 10px;border-radius:12px;font-size:0.72rem">
-          <span class="file-src-name" id="fsn-portfolio">Mission_Portfolio.xlsx</span>
-          <span class="file-src-btn">↺</span>
-          <input type="file" id="fsu-portfolio" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpdate('portfolio')">
-        </span>
-        <span class="file-src" id="fsr-ucr" onclick="triggerFileUpdate('ucr')" title="Click to reload" style="padding:1px 8px 1px 10px;border-radius:12px;font-size:0.72rem">
-          <span class="file-src-name" id="fsn-ucr">Use Cases.csv</span>
-          <span class="file-src-btn">↺</span>
-          <input type="file" id="fsu-ucr" accept=".csv" style="display:none" onchange="handleFileUpdate('ucr')">
-        </span>
-        <span class="file-src unloaded" id="fsr-jira" onclick="triggerFileUpdate('jira')" title="Click to load Jira" style="padding:1px 8px 1px 10px;border-radius:12px;font-size:0.72rem">
-          <span class="file-src-name" id="fsn-jira">Jira</span>
-          <span class="file-src-btn">↺</span>
-          <input type="file" id="fsu-jira" accept=".xls,.xlsx" style="display:none" onchange="handleFileUpdate('jira')">
-        </span>
-      </p>
-    </div>
+    <h1>Missions Dashboard</h1>
     <div class="header-search">
       <input type="text" id="search" placeholder="Search name, author, tags, ID…" oninput="applyFilters()">
     </div>
   </header>
+  <!-- File sources inline below header -->
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 6px;font-size:0.72rem;color:var(--muted)">
+    <span>SAP Discovery Center</span>
+    <span style="color:#334155">·</span>
+    <span class="file-src" id="fsr-portfolio" onclick="triggerFileUpdate('portfolio')" title="Click to reload" style="padding:1px 8px 1px 10px;border-radius:12px">
+      <span class="file-src-name" id="fsn-portfolio">Mission_Portfolio.xlsx</span>
+      <span class="file-src-btn">↺</span>
+      <input type="file" id="fsu-portfolio" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpdate('portfolio')">
+    </span>
+    <span class="file-src" id="fsr-ucr" onclick="triggerFileUpdate('ucr')" title="Click to reload" style="padding:1px 8px 1px 10px;border-radius:12px">
+      <span class="file-src-name" id="fsn-ucr">Use Cases.csv</span>
+      <span class="file-src-btn">↺</span>
+      <input type="file" id="fsu-ucr" accept=".csv" style="display:none" onchange="handleFileUpdate('ucr')">
+    </span>
+    <span class="file-src unloaded" id="fsr-jira" onclick="triggerFileUpdate('jira')" title="Click to load Jira" style="padding:1px 8px 1px 10px;border-radius:12px">
+      <span class="file-src-name" id="fsn-jira">Jira</span>
+      <span class="file-src-btn">↺</span>
+      <input type="file" id="fsu-jira" accept=".xls,.xlsx" style="display:none" onchange="handleFileUpdate('jira')">
+    </span>
+  </div>
 
 
   <!-- Charts: Category+Coach | KG | Img+Status -->
