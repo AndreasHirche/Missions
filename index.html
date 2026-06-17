@@ -187,7 +187,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
     <div class="file-src" id="fsr-ucr" onclick="triggerFileUpdate('ucr')" title="Click to reload from file">
       <span class="file-src-name" id="fsn-ucr">Use Cases.csv</span>
       <span class="file-src-btn">↺</span>
-      <input type="file" id="fsu-ucr" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileUpdate('ucr')">
+      <input type="file" id="fsu-ucr" accept=".csv" style="display:none" onchange="handleFileUpdate('ucr')">
     </div>
     <div class="file-src unloaded" id="fsr-jira" onclick="triggerFileUpdate('jira')" title="Click to load Jira validation file">
       <span class="file-src-name" id="fsn-jira">Jira (not loaded)</span>
@@ -638,12 +638,8 @@ async function handleFileUpdate(which){
       cached.portfolio=_manualPortfolio;
       cached.fileNames.portfolio=f.name;
     }else if(which==='ucr'){
-      if(f.name.toLowerCase().endsWith('.csv')){
-        var wb=XLSX.read(await f.text(),{type:'string',cellDates:true});
-        _manualUCR=slimRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}),UCR_COLS);
-      }else{
-        _manualUCR=slimRows(parseExcel(await readFileAsBuffer(f)),UCR_COLS);
-      }
+      var wb=XLSX.read(await f.text(),{type:'string',cellDates:true});
+      _manualUCR=slimRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}),UCR_COLS);
       cached.ucr=_manualUCR;
       cached.fileNames.ucr=f.name;
     }else if(which==='jira'){
@@ -1385,8 +1381,7 @@ init();
 </style>
 
 <script src="https://d3js.org/d3.v7.min.js"></script>
-<script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
-<script src="https://unpkg.com/3d-force-graph@1.72.4/dist/3d-force-graph.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph/dist/3d-force-graph.min.js"></script>
 <script>
 // ── Knowledge Graph ─────────────────────────────────────────────────────────
 var KG = (function(){
@@ -1596,35 +1591,37 @@ var KG = (function(){
     window._kgNd=fd.nodes; window._kgLd=fd.links;
     document.getElementById('kg-edge-count').textContent=fd.nodes.length+' nodes · '+fd.links.length+' edges';
 
+    if(typeof ForceGraph3D==='undefined'){
+      wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-family:Inter,sans-serif;font-size:0.85rem">3D library loading… try again in a moment.</div>';
+      return;
+    }
+
     // Deep copy to avoid 3d-force-graph mutating shared objects
     var gData={
       nodes: fd.nodes.map(n=>({...n})),
       links: fd.links.map(l=>({source:l.source?.id||l.source, target:l.target?.id||l.target, rel:l.rel}))
     };
 
-    graph3d = ForceGraph3D({antialias:true, alpha:true})(wrap)
+    graph3d = ForceGraph3D({antialias:true})(wrap)
       .width(wrap.clientWidth).height(wrap.clientHeight)
       .backgroundColor('#0a0f1e')
       .graphData(gData)
       .nodeColor(n=>n.type==='mission'?(STATUS_COLOR[n.status]||'#38bdf8'):KG_TYPE[n.type].color)
-      .nodeVal(n=>n.type==='mission'?2:Math.max(4,nodeR(n)))
-      .nodeLabel(n=>'<span style="font-family:Inter,sans-serif;font-size:12px;color:'+( KG_TYPE[n.type]?.color||'#fff')+';background:#0f172a;padding:3px 7px;border-radius:4px;border:1px solid #334155">'+n.label+(n.status?' · '+n.status:'')+'</span>')
-      .nodeResolution(10)
+      .nodeVal(n=>n.type==='mission'?1:Math.max(3,nodeR(n)*0.8))
+      .nodeLabel(n=>n.label+(n.status?' · '+n.status:'')+(n.count?' ('+n.count+')':''))
+      .nodeResolution(8)
       .linkColor(l=>KG_TYPE[l.rel]?.color||'#334155')
-      .linkOpacity(0.25)
-      .linkWidth(0.4)
+      .linkOpacity(0.2)
+      .linkWidth(0.3)
       .onNodeClick(function(n){
-        // find original node with full data
         var orig=(window._kgNd||[]).find(x=>x.id===n.id)||n;
         openDP(orig);
       })
-      .onNodeHover(function(n){
-        wrap.style.cursor=n?'pointer':'default';
-      })
-      .d3Force('charge', d3.forceManyBody().strength(n=>n.type==='category'?-300:n.type==='coach'?-200:n.type==='mission'?-15:-100))
-      .d3Force('link', d3.forceLink().id(d=>d.id)
-        .distance(l=>l.rel==='category'?90:l.rel==='coach'?70:45)
-        .strength(l=>l.rel==='category'?0.5:0.3));
+      .onNodeHover(function(n){ wrap.style.cursor=n?'pointer':'default'; });
+
+    // Tune forces after graph is initialized
+    graph3d.d3Force('charge').strength(n=>n.type==='category'?-120:n.type==='coach'?-80:n.type==='mission'?-10:-60);
+    graph3d.d3Force('link').distance(l=>l.rel==='category'?80:l.rel==='coach'?60:40);
   }
 
   // ── Shared helpers ────────────────────────────────────────────────────────
@@ -1681,7 +1678,7 @@ var KG = (function(){
     close: function(){
       document.getElementById('kgOverlay').style.display='none';
       if(sim)sim.stop();
-      if(graph3d){graph3d._destructor&&graph3d._destructor();graph3d=null;}
+      if(graph3d){try{graph3d.pauseAnimation();}catch(e){}graph3d=null;document.getElementById('kg3dWrap').innerHTML='';}
     },
     setMode: function(m){
       mode=m;
