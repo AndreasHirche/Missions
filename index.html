@@ -94,13 +94,12 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .kpi.k-idea .kpi-val{color:#a78bfa}
 
 /* Charts panel — now direct children of dashboard-main */
-.charts{display:contents} /* flatten — children go directly into dashboard-main grid */
-.col-stack{display:flex;flex-direction:column;gap:16px;min-height:0}
-.col-stack .chart-card{flex:1;min-height:0}
-.col-stack .chart-card .chart-inner{height:auto;flex:1;min-height:100px}
+.charts{display:contents}
+.col-stack{display:flex;flex-direction:column;gap:12px}
 .chart-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);padding:16px}
-.chart-title{font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px}
-.chart-inner{position:relative;height:230px}
+.chart-title{font-size:0.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
+.chart-inner{position:relative;height:200px;overflow:hidden}
+.chart-inner canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
 
 /* Filters */
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
@@ -951,7 +950,7 @@ function renderCharts(){
       }]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,cutout:'68%',
+      responsive:false,maintainAspectRatio:false,cutout:'68%',
       onClick:function(e,els){
         if(!els.length)return;
         var st=STATUS_ORDER[els[0].index];
@@ -990,7 +989,7 @@ function renderCharts(){
       }]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      responsive:false,maintainAspectRatio:false,indexAxis:'y',
       onClick:function(e,els){
         if(!els.length)return;
         var cat=catSorted[els[0].index][0];
@@ -1029,7 +1028,7 @@ function renderCharts(){
       }]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      responsive:false,maintainAspectRatio:false,indexAxis:'y',
       onClick:function(e,els){
         if(!els.length)return;
         var name=coachSorted[els[0].index][0];
@@ -1981,17 +1980,8 @@ document.addEventListener('DOMContentLoaded',function(){
   var tblScroll = document.querySelector('.tbl-scroll');
 
   tblScroll && tblScroll.addEventListener('scroll', function(){
-    if(tblScroll.scrollTop > 0) {
-      topPanel.classList.add('compact');
-    } else {
-      topPanel.classList.remove('compact');
-      // Trigger Chart.js resize after CSS transition completes
-      setTimeout(function(){
-        [window.statusChart,window.categoryChart,window.coachChart].forEach(function(c){
-          if(c&&c.resize)c.resize();
-        });
-      }, 420);
-    }
+    if(tblScroll.scrollTop > 0) topPanel.classList.add('compact');
+    else topPanel.classList.remove('compact');
   }, {passive:true});
 
   window.measureTopFn = function(){};
