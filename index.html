@@ -20,12 +20,29 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 ::-webkit-scrollbar-corner{background:transparent}
 
 /* Top panel */
-#top-panel{background:var(--bg);z-index:10;overflow:hidden;transition:height .4s cubic-bezier(.4,0,.2,1)}
-#top-panel .wrap{transition:transform .4s cubic-bezier(.4,0,.2,1);transform-origin:top center}
-#top-panel.compact .wrap{transform:scale(0.5)}
-#top-panel.compact{border-bottom:1px solid var(--border)}
+#top-panel{background:var(--bg);z-index:10;overflow:hidden;transition:height .4s cubic-bezier(.4,0,.2,1);border-bottom:1px solid transparent;transition:height .4s cubic-bezier(.4,0,.2,1),border-color .3s}
+#top-panel.compact{border-color:var(--border)}
 /* Scroll area */
 #scroll-area{overflow:hidden}
+
+/* Compact tile adjustments — shrink chart areas, kpi labels, etc */
+#top-panel .kpis{transition:gap .4s}
+#top-panel .kpi-lbl{transition:font-size .3s,opacity .3s}
+#top-panel .chart-inner{transition:height .4s}
+#top-panel.compact .kpis{gap:4px}
+#top-panel.compact .kpi-val{font-size:1rem!important}
+#top-panel.compact .kpi-lbl{font-size:0.5rem!important}
+#top-panel.compact .chart-inner{height:80px!important;min-height:80px!important}
+#top-panel.compact .chart-title{margin-bottom:4px;font-size:0.62rem}
+#top-panel.compact header{padding-top:6px;margin-bottom:6px}
+#top-panel.compact header h1{font-size:1.1rem}
+#top-panel.compact header p{font-size:0.7rem}
+#top-panel.compact .file-sources{padding:2px 0 6px}
+#top-panel.compact .dashboard-main{margin-bottom:4px;gap:8px}
+#top-panel.compact .col-stack{flex-direction:row!important;gap:8px}
+#top-panel.compact .col-stack .chart-card{flex:1;min-width:0}
+#top-panel.compact .col-stack img{max-height:none!important;height:100%;flex:0 0 auto;width:auto}
+#top-panel.compact .kg-tile .chart-inner{height:80px!important}
 
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;
   background-image:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(124,58,237,0.25) 0%,transparent 70%),
@@ -1960,31 +1977,46 @@ document.addEventListener('DOMContentLoaded',function(){
   // Top panel compress on scroll
   var topPanel=document.getElementById('top-panel');
   var tblScroll=document.querySelector('.tbl-scroll');
-  var topFull=0;
+  var topFull=0, topCompact=0;
+
+  function updateTableHeight(panelH){
+    var avail=window.innerHeight-(panelH||topFull)-4;
+    if(tblScroll) tblScroll.style.maxHeight=Math.max(120,avail)+'px';
+    document.documentElement.style.setProperty('--top-h',(panelH||topFull)+'px');
+  }
 
   function setCompact(compact){
+    topPanel.style.height=''; // let content flow first
     if(compact){
       topPanel.classList.add('compact');
-      // scale(0.5) visually halves content but layout box stays full size
-      // set height to half so the panel actually takes half the space
-      topPanel.style.height=Math.round(topFull*0.5)+'px';
+      // measure natural compact height (CSS rules already applied)
+      requestAnimationFrame(function(){
+        topCompact=topPanel.scrollHeight;
+        topPanel.style.height=topCompact+'px';
+        updateTableHeight(topCompact);
+      });
     } else {
       topPanel.classList.remove('compact');
-      topPanel.style.height=topFull+'px';
+      requestAnimationFrame(function(){
+        topPanel.style.height=topFull+'px';
+        updateTableHeight(topFull);
+      });
     }
-    var panelH=parseInt(topPanel.style.height)||topFull;
-    var paginH=(document.getElementById('pagination')||{offsetHeight:40}).offsetHeight||40;
-    var toolbarH=(document.querySelector('.table-toolbar')||{offsetHeight:24}).offsetHeight||24;
-    if(tblScroll) tblScroll.style.maxHeight=Math.max(120,window.innerHeight-panelH-paginH-toolbarH-12)+'px';
-    document.documentElement.style.setProperty('--top-h',panelH+'px');
   }
 
   function measureTop(){
     var wasCompact=topPanel.classList.contains('compact');
     topPanel.classList.remove('compact');
     topPanel.style.height='';
-    topFull=topPanel.scrollHeight;
-    setCompact(wasCompact);
+    requestAnimationFrame(function(){
+      topFull=topPanel.scrollHeight;
+      if(wasCompact){
+        setCompact(true);
+      } else {
+        topPanel.style.height=topFull+'px';
+        updateTableHeight(topFull);
+      }
+    });
   }
 
   tblScroll&&tblScroll.addEventListener('scroll',function(){
@@ -1993,7 +2025,7 @@ document.addEventListener('DOMContentLoaded',function(){
   },{passive:true});
 
   window.measureTopFn=measureTop;
-  window.addEventListener('resize',measureTop);
+  window.addEventListener('resize',function(){topFull=0;measureTop();});
   setTimeout(measureTop,200);
   setTimeout(measureTop,1500);
 });
