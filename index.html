@@ -274,11 +274,11 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
     <div class="col-stack fade-in" style="animation-delay:.1s">
       <div class="chart-card" style="display:flex;flex-direction:column">
         <div class="chart-title">Missions by Category <span style="font-size:.62rem;font-weight:400;color:#475569;margin-left:6px">click to filter</span></div>
-        <div class="chart-inner" style="flex:1;min-height:90px"><canvas id="categoryChart"></canvas></div>
+        <div class="chart-inner"><canvas id="categoryChart"></canvas></div>
       </div>
       <div class="chart-card" style="display:flex;flex-direction:column">
         <div class="chart-title">Missions by Coach <span style="font-size:.62rem;font-weight:400;color:#475569;margin-left:6px">click to filter</span></div>
-        <div class="chart-inner" id="coachChartInner" style="flex:1;min-height:90px"><canvas id="coachChart"></canvas></div>
+        <div class="chart-inner" id="coachChartInner"><canvas id="coachChart"></canvas></div>
       </div>
     </div>
 
@@ -301,7 +301,7 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
       <img src="ground control.jpg" alt="Ground Control" style="flex:1;min-height:0;max-height:200px;width:auto;border-radius:12px;object-fit:cover;align-self:stretch">
       <div class="chart-card" style="display:flex;flex-direction:column;flex-shrink:0">
         <div class="chart-title">Status Distribution</div>
-        <div class="chart-inner" style="height:120px"><canvas id="statusChart"></canvas></div>
+        <div class="chart-inner"><canvas id="statusChart"></canvas></div>
       </div>
     </div>
 
@@ -1981,8 +1981,17 @@ document.addEventListener('DOMContentLoaded',function(){
   var tblScroll = document.querySelector('.tbl-scroll');
 
   tblScroll && tblScroll.addEventListener('scroll', function(){
-    if(tblScroll.scrollTop > 0) topPanel.classList.add('compact');
-    else topPanel.classList.remove('compact');
+    if(tblScroll.scrollTop > 0) {
+      topPanel.classList.add('compact');
+    } else {
+      topPanel.classList.remove('compact');
+      // Trigger Chart.js resize after CSS transition completes
+      setTimeout(function(){
+        [window.statusChart,window.categoryChart,window.coachChart].forEach(function(c){
+          if(c&&c.resize)c.resize();
+        });
+      }, 420);
+    }
   }, {passive:true});
 
   window.measureTopFn = function(){};
