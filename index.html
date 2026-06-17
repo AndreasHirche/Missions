@@ -22,18 +22,24 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 /* Top panel */
 #top-panel{background:var(--bg);z-index:10;overflow:hidden;
   transition:height .35s cubic-bezier(.4,0,.2,1)}
-#top-panel.compact .dashboard-main{display:none}
 #top-panel.compact header h1{font-size:1.1rem}
 #top-panel.compact header p{display:none}
 #top-panel.compact .file-sources{display:none}
-#top-panel.compact header{padding-top:8px;margin-bottom:6px}
+#top-panel.compact header{padding-top:6px;margin-bottom:4px}
+/* Tiles: scale down to 50% height, keep visible */
+.dashboard-main{transition:transform .35s cubic-bezier(.4,0,.2,1),transform-origin .35s;transform-origin:top center}
+#top-panel.compact .dashboard-main{transform:scaleY(0.5);margin-bottom:-28px}
+#top-panel.compact .kpi-val{font-size:1rem}
+#top-panel.compact .kpi-lbl{display:none}
 
 /* Scroll area */
 #scroll-area{height:calc(100vh - var(--top-h));overflow-y:auto;overflow-x:hidden;
-  scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
+  scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05);
+  scrollbar-gutter:stable}
 #scroll-area::-webkit-scrollbar{width:7px}
 #scroll-area::-webkit-scrollbar-track{background:rgba(255,255,255,0.03)}
 #scroll-area::-webkit-scrollbar-thumb{background:#7c3aed;border-radius:4px}
+#scroll-area::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
 
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;
   background-image:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(124,58,237,0.25) 0%,transparent 70%),
@@ -836,6 +842,10 @@ function processData(portfolio,ucr){
   renderKPIs();
   renderCharts();
   applyFilters();
+  // Re-measure top panel height after charts render
+  setTimeout(function(){
+    if(window.measureTopFn) window.measureTopFn(document.getElementById('top-panel').classList.contains('compact'));
+  },300);
 }
 
 
@@ -1971,34 +1981,48 @@ document.addEventListener('DOMContentLoaded',function(){
   // Shrink top panel on scroll
   var topPanel=document.getElementById('top-panel');
   var scrollArea=document.getElementById('scroll-area');
-  var topFull, topCompact;
+  var topFull=0, topCompact=0;
 
-  function measureTop(){
+  function measureTop(forceCompact){
+    var wasCompact=topPanel.classList.contains('compact');
     topPanel.classList.remove('compact');
     topFull=topPanel.scrollHeight;
-    document.documentElement.style.setProperty('--top-h',topFull+'px');
-    scrollArea.style.height='calc(100vh - '+topFull+'px)';
-    topCompact=null;
+    if(forceCompact||wasCompact){
+      topPanel.classList.add('compact');
+      topCompact=topPanel.scrollHeight;
+      var h='calc(100vh - '+topCompact+'px)';
+      document.documentElement.style.setProperty('--top-h',topCompact+'px');
+      scrollArea.style.height=h;
+    } else {
+      topCompact=0;
+      document.documentElement.style.setProperty('--top-h',topFull+'px');
+      scrollArea.style.height='calc(100vh - '+topFull+'px)';
+    }
   }
 
   scrollArea.addEventListener('scroll',function(){
     if(scrollArea.scrollTop>40){
-      if(!topCompact){
+      if(!topPanel.classList.contains('compact')){
         topPanel.classList.add('compact');
         topCompact=topPanel.scrollHeight;
       }
       document.documentElement.style.setProperty('--top-h',topCompact+'px');
       scrollArea.style.height='calc(100vh - '+topCompact+'px)';
-    }else{
-      topPanel.classList.remove('compact');
+    } else {
+      if(topPanel.classList.contains('compact')){
+        topPanel.classList.remove('compact');
+        topCompact=0;
+      }
       document.documentElement.style.setProperty('--top-h',topFull+'px');
       scrollArea.style.height='calc(100vh - '+topFull+'px)';
-      topCompact=null;
     }
   },{passive:true});
 
-  window.addEventListener('resize',measureTop);
-  setTimeout(measureTop,100);
+  window.measureTopFn=measureTop;
+  window.addEventListener('resize',function(){measureTop(topPanel.classList.contains('compact'));});
+  // Measure after initial render and again after data loads
+  setTimeout(function(){measureTop(false);},200);
+  setTimeout(function(){measureTop(topPanel.classList.contains('compact'));},1500);
 });
 </script>
 </body>
