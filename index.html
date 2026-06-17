@@ -79,11 +79,11 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 @media(max-width:600px){.dashboard-main{grid-template-columns:1fr}}
 /* All cols same height */
 .cat-coach-col,.kg-tile,.img-status-col{height:var(--tiles-h);overflow:hidden}
-.kg-tile{display:flex;flex-direction:column;align-self:auto}
+.kg-tile{display:flex;flex-direction:column;align-self:auto;max-height:var(--tiles-h);overflow:hidden}
 /* Compact */
 #top-panel.compact .cat-coach-col,
 #top-panel.compact .kg-tile,
-#top-panel.compact .img-status-col{height:var(--tiles-compact-h)}
+#top-panel.compact .img-status-col{height:var(--tiles-compact-h);max-height:var(--tiles-compact-h)}
 
 /* Compact */
 #top-panel.compact .cat-coach-col{flex-direction:row!important;gap:8px}
