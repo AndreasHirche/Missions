@@ -9,7 +9,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#06070f;--glass:rgba(255,255,255,0.05);--border:rgba(255,255,255,0.1);--purple:#7c3aed;--cyan:#06b6d4;--text:#e2e8f0;--muted:#94a3b8}
-*{box-sizing:border-box;margin:0;padding:0}
+/* Global scrollbar */
+html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-track{background:rgba(255,255,255,0.03)}
+::-webkit-scrollbar-thumb{background:#7c3aed;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
+::-webkit-scrollbar-corner{background:transparent}
+
+/* Sticky header */
+.sticky-header{position:sticky;top:0;z-index:50;background:var(--bg);backdrop-filter:blur(16px);
+  border-bottom:1px solid transparent;transition:padding .3s,border-color .3s}
+.sticky-header.compact{border-color:var(--border)}
+.sticky-header header{transition:padding .25s,margin .25s}
+.sticky-header.compact header{margin-bottom:6px}
+.sticky-header.compact h1{font-size:1.1rem}
+.sticky-header.compact header p{display:none}
+.sticky-header.compact .file-sources{display:none}
+
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
   background-image:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(124,58,237,0.25) 0%,transparent 70%),
     radial-gradient(ellipse 40% 40% at 80% 80%,rgba(6,182,212,0.1) 0%,transparent 60%)}
@@ -19,13 +36,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .particles{position:fixed;inset:0;pointer-events:none;z-index:0}
 .particle{position:absolute;border-radius:50%;animation:float linear infinite}
 @keyframes float{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-20px) translateX(40px);opacity:0}}
-.wrap{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:32px 16px}
+.wrap{position:relative;z-index:1;max-width:100%;margin:0 auto;padding:0 16px 32px}
 
 /* Header */
-header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;position:relative}
+header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;position:relative;padding-top:20px}
 .header-brand{flex:0 0 auto}
-header h1{font-size:1.9rem;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-header p{color:var(--muted);font-size:0.82rem;margin-top:4px}
+header h1{font-size:1.9rem;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;transition:font-size .25s}
+header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity .2s}
 .header-search{flex:1;min-width:180px}
 .header-search input{width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 14px;font-family:'Inter',sans-serif;font-size:0.82rem;outline:none;transition:border-color .2s}
 .header-search input::placeholder{color:#475569}
@@ -67,8 +84,8 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px}
 
 /* Table */
 .tbl-wrap{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px)}
-.tbl-scroll{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
-.tbl-scroll::-webkit-scrollbar{height:7px}
+.tbl-scroll{overflow-x:scroll;scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
+.tbl-scroll::-webkit-scrollbar{height:7px;width:7px}
 .tbl-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,0.03);border-radius:0 0 12px 12px}
 .tbl-scroll::-webkit-scrollbar-thumb{background:#7c3aed;border-radius:4px}
 .tbl-scroll::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
@@ -173,6 +190,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 <div class="particles" id="particles"></div>
 
 <div class="wrap">
+<div class="sticky-header" id="stickyHeader">
   <header class="fade-in">
     <div class="header-brand">
       <h1>Missions Dashboard</h1>
@@ -200,8 +218,8 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
       <span class="file-src-btn">↺</span>
       <input type="file" id="fsu-jira" accept=".xls,.xlsx" style="display:none" onchange="handleFileUpdate('jira')">
     </div>
-  </div>
-
+  </div><!-- /.file-sources -->
+</div><!-- /.sticky-header -->
   <!-- KPI sidebar + Charts -->
   <div class="dashboard-main fade-in" style="animation-delay:.05s">
 
@@ -1933,6 +1951,14 @@ document.addEventListener('DOMContentLoaded',function(){
       document.getElementById('kgTileLabel').textContent=window.allMissions.length+' missions loaded — click to explore';
     }
   },1000);
+
+  // Sticky header compact on scroll
+  var hdr=document.getElementById('stickyHeader');
+  var THRESH=60;
+  window.addEventListener('scroll',function(){
+    if(window.scrollY>THRESH) hdr.classList.add('compact');
+    else hdr.classList.remove('compact');
+  },{passive:true});
 });
 </script>
 </body>
