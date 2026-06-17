@@ -38,13 +38,16 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact .kpis{gap:4px}
 #top-panel.compact .kpi-val{font-size:1rem!important}
 #top-panel.compact .kpi-lbl{font-size:0.5rem!important}
-#top-panel.compact .chart-inner{height:80px!important;min-height:80px!important}
+#top-panel.compact .chart-inner{height:120px!important}
 #top-panel.compact .chart-title{margin-bottom:4px;font-size:0.62rem}
 #top-panel.compact header{padding-top:6px;margin-bottom:6px}
 #top-panel.compact header h1{font-size:1.1rem}
 #top-panel.compact header p{font-size:0.7rem}
-#top-panel.compact .file-sources{padding:2px 0 6px}
-#top-panel.compact .kg-tile .chart-inner{height:80px!important}
+#top-panel.compact .file-sources{padding:2px 0 4px}
+#top-panel.compact .dashboard-main{margin-bottom:4px}
+#top-panel.compact .kg-tile .chart-inner{height:120px!important}
+#top-panel.compact .col-stack img{height:80px!important}
+#top-panel.compact .chart-card{padding:8px 16px}
 
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);flex:1;display:flex;flex-direction:column;
   background-image:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(124,58,237,0.25) 0%,transparent 70%),
@@ -295,9 +298,9 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
     </div>
 
     <!-- Col 4: Image + Status stacked -->
-    <div class="col-stack" style="animation-delay:.15s">
-      <img src="ground control.jpg" alt="Ground Control" style="flex:1;min-height:0;max-height:200px;width:auto;border-radius:12px;object-fit:cover;align-self:stretch">
-      <div class="chart-card" style="display:flex;flex-direction:column;flex-shrink:0">
+    <div class="col-stack" style="overflow:hidden">
+      <img src="ground control.jpg" alt="Ground Control" style="height:200px;width:100%;border-radius:12px;object-fit:cover;object-position:top;flex-shrink:0">
+      <div class="chart-card" style="flex-shrink:0">
         <div class="chart-title">Status Distribution</div>
         <div class="chart-inner"><canvas id="statusChart"></canvas></div>
       </div>
