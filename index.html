@@ -10,6 +10,8 @@
 <style>
 :root{--bg:#06070f;--glass:rgba(255,255,255,0.05);--border:rgba(255,255,255,0.1);--purple:#7c3aed;--cyan:#06b6d4;--text:#e2e8f0;--muted:#94a3b8}
 /* Global scrollbar */
+html,body{height:100%;overflow:hidden}
+:root{--top-h:520px}
 html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 ::-webkit-scrollbar{width:7px;height:7px}
 ::-webkit-scrollbar-track{background:rgba(255,255,255,0.03)}
@@ -17,17 +19,23 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 ::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
 ::-webkit-scrollbar-corner{background:transparent}
 
-/* Sticky header */
-.sticky-header{position:sticky;top:0;z-index:50;background:var(--bg);backdrop-filter:blur(16px);
-  border-bottom:1px solid transparent;transition:padding .3s,border-color .3s}
-.sticky-header.compact{border-color:var(--border)}
-.sticky-header header{transition:padding .25s,margin .25s}
-.sticky-header.compact header{margin-bottom:6px}
-.sticky-header.compact h1{font-size:1.1rem}
-.sticky-header.compact header p{display:none}
-.sticky-header.compact .file-sources{display:none}
+/* Top panel */
+#top-panel{background:var(--bg);z-index:10;overflow:hidden;
+  transition:height .35s cubic-bezier(.4,0,.2,1)}
+#top-panel.compact .dashboard-main{display:none}
+#top-panel.compact header h1{font-size:1.1rem}
+#top-panel.compact header p{display:none}
+#top-panel.compact .file-sources{display:none}
+#top-panel.compact header{padding-top:8px;margin-bottom:6px}
 
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
+/* Scroll area */
+#scroll-area{height:calc(100vh - var(--top-h));overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
+#scroll-area::-webkit-scrollbar{width:7px}
+#scroll-area::-webkit-scrollbar-track{background:rgba(255,255,255,0.03)}
+#scroll-area::-webkit-scrollbar-thumb{background:#7c3aed;border-radius:4px}
+
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;
   background-image:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(124,58,237,0.25) 0%,transparent 70%),
     radial-gradient(ellipse 40% 40% at 80% 80%,rgba(6,182,212,0.1) 0%,transparent 60%)}
 .grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
@@ -189,8 +197,8 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
 <div class="grid-bg"></div>
 <div class="particles" id="particles"></div>
 
+<div id="top-panel">
 <div class="wrap">
-<div class="sticky-header" id="stickyHeader">
   <header class="fade-in">
     <div class="header-brand">
       <h1>Missions Dashboard</h1>
@@ -219,7 +227,7 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
       <input type="file" id="fsu-jira" accept=".xls,.xlsx" style="display:none" onchange="handleFileUpdate('jira')">
     </div>
   </div><!-- /.file-sources -->
-</div><!-- /.sticky-header -->
+
   <!-- KPI sidebar + Charts -->
   <div class="dashboard-main fade-in" style="animation-delay:.05s">
 
@@ -278,6 +286,12 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
     <select id="fAuthor" onchange="applyFilters()"><option value=""></option></select>
   </div>
 
+</div><!-- /.wrap #top-panel -->
+</div><!-- /#top-panel -->
+
+<div id="scroll-area">
+<div class="wrap">
+
   <!-- Count + active filter chips -->
   <div class="table-toolbar">
     <span class="result-count" id="resultCount"></span>
@@ -295,8 +309,10 @@ td.filterable:hover{background:rgba(124,58,237,0.12)}
       <span id="pageInfo"></span>
       <div class="page-btns" id="pageBtns"></div>
     </div>
-  </div><!-- /.wrap -->
-</div>
+  </div>
+
+</div><!-- /.wrap #scroll-area -->
+</div><!-- /#scroll-area -->
 <div id="colFilterDrop" style="position:fixed;z-index:300;background:#1a1a2e;border:1px solid rgba(255,255,255,0.18);border-radius:8px;padding:4px;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:none"></div>
 
 <!-- App scripts -->
@@ -1952,13 +1968,37 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   },1000);
 
-  // Sticky header compact on scroll
-  var hdr=document.getElementById('stickyHeader');
-  var THRESH=60;
-  window.addEventListener('scroll',function(){
-    if(window.scrollY>THRESH) hdr.classList.add('compact');
-    else hdr.classList.remove('compact');
+  // Shrink top panel on scroll
+  var topPanel=document.getElementById('top-panel');
+  var scrollArea=document.getElementById('scroll-area');
+  var topFull, topCompact;
+
+  function measureTop(){
+    topPanel.classList.remove('compact');
+    topFull=topPanel.scrollHeight;
+    document.documentElement.style.setProperty('--top-h',topFull+'px');
+    scrollArea.style.height='calc(100vh - '+topFull+'px)';
+    topCompact=null;
+  }
+
+  scrollArea.addEventListener('scroll',function(){
+    if(scrollArea.scrollTop>40){
+      if(!topCompact){
+        topPanel.classList.add('compact');
+        topCompact=topPanel.scrollHeight;
+      }
+      document.documentElement.style.setProperty('--top-h',topCompact+'px');
+      scrollArea.style.height='calc(100vh - '+topCompact+'px)';
+    }else{
+      topPanel.classList.remove('compact');
+      document.documentElement.style.setProperty('--top-h',topFull+'px');
+      scrollArea.style.height='calc(100vh - '+topFull+'px)';
+      topCompact=null;
+    }
   },{passive:true});
+
+  window.addEventListener('resize',measureTop);
+  setTimeout(measureTop,100);
 });
 </script>
 </body>
