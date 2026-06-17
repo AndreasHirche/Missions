@@ -106,11 +106,11 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .chart-inner{position:relative;height:160px;overflow:hidden}
 /* img+status col */
 .img-status-col{display:flex;overflow:hidden;flex-direction:column;gap:12px}
-.img-status-col img{height:200px;flex-shrink:0;object-fit:cover;object-position:top;border-radius:12px;width:100%}
+.img-status-col img{flex:1;min-height:60px;object-fit:cover;object-position:top;border-radius:12px;width:100%}
 .img-status-col .chart-card{flex-shrink:0}
-/* compact: image beside status, both sharing width */
+/* compact: image beside status */
 #top-panel.compact .img-status-col{flex-direction:row!important;gap:8px;align-self:stretch}
-#top-panel.compact .img-status-col img{height:auto!important;width:50%;flex:1;border-radius:8px}
+#top-panel.compact .img-status-col img{flex:1;height:auto!important;min-height:0;width:auto;border-radius:8px}
 #top-panel.compact .img-status-col .chart-card{flex:1;min-width:0;display:flex;flex-direction:column}
 #top-panel.compact .img-status-col .chart-card .chart-inner{flex:1;height:auto!important;min-height:60px}
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
