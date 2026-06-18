@@ -504,7 +504,7 @@ var PORTFOLIO_COLS=['Mission ID','UCR ID','Mission Name','STATUS','Category','Au
   'Coach name(s)','Link to Discovery Center','Link in Mission Manager','Committed Date','Featured Mission?',
   'Name UA','Review by UA','Date UA','Quality Review completed (yes/no)','Name PE','Review by Platform Exp.','Date PE'];
 var UCR_COLS=['ID','Title','Mission Title','Name','Mission Name','Status','Lifecycle Status','State',
-  'Category','Solution Area','Product Area','Line of Business','Owner','Author','Created By','Submitted By',
+  'Category','Product Category','Solution Area','Product Area','Line of Business','Owner','Author','Created By','Submitted By',
   'Coach','Authoring Company','Company','Vendor','Expiry Date','Last Modified On',
   'Validation Status','Content Validation Status','Validated','Tags','Published Channels'];
 
@@ -775,7 +775,7 @@ function processData(portfolio,ucr){
     // UCR as source of truth (CSV fields: ID, Title, Status, Owner, Authoring Company, Last Modified On, Published Channels, Expiry Date)
     var name   =getF(r,'Title','Mission Title','Name','Mission Name');
     var status =getF(r,'Status','Lifecycle Status','State');
-    var cat    =getF(r,'Category','Solution Area','Product Area','Line of Business')||(p?String(p['Category']||'').trim():'');
+    var cat    =getF(r,'Product Category','Category','Solution Area','Product Area','Line of Business')||(p?String(p['Category']||'').trim():'');
     var author =getF(r,'Owner','Author','Created By','Submitted By');
     var coach  =getF(r,'Coach','Coach name(s)')||(p?String(p['Coach name(s)']||'').trim():'');
     var company=getF(r,'Authoring Company','Company','Vendor');
