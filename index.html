@@ -413,24 +413,34 @@ var STATUS_COLORS={
 };
 
 // Services per mission loaded from uc_services.json
+// Keys are DC mission IDs (numeric strings like "3643")
 var UC_SERVICES = {};
+var _ucrIdToDcId = {};  // UCR ID -> DC mission ID, built from portfolio in processData
+
+function _getDcId(m){
+  var ucrId=String(m['UCR ID']||'');
+  if(_ucrIdToDcId[ucrId]) return _ucrIdToDcId[ucrId];
+  var lnk=String(m['Link to Discovery Center']||'');
+  var mid=lnk.match(/missiondetail\/(\d+)/);
+  return mid?mid[1]:null;
+}
+
+function _attachServices(){
+  if(!window.allMissions||!allMissions.length||!Object.keys(UC_SERVICES).length) return;
+  var count=0;
+  allMissions.forEach(function(m){
+    var dcId=_getDcId(m);
+    if(dcId&&UC_SERVICES[dcId]){ m._services=UC_SERVICES[dcId]; count++; }
+  });
+  console.log('Services attached to',count,'missions');
+  if(typeof renderTable==='function') renderTable();
+  if(window.KG) KG.rebuildIfNeeded();
+}
+
 (function loadUcServices(){
   if(location.protocol==='file:')return;
   fetch('uc_services.json').then(function(r){return r.ok?r.json():null;}).then(function(d){
-    if(d){
-      UC_SERVICES=d;
-      console.log('UC_SERVICES loaded:',Object.keys(d).length,'missions');
-      if(window.allMissions&&window.allMissions.length){
-        allMissions.forEach(function(m){
-          // DC mission ID is in the Link to Discovery Center URL: /missiondetail/3643/...
-          var link=String(m['Link to Discovery Center']||'');
-          var mid=link.match(/missiondetail\/(\d+)/);
-          if(mid&&UC_SERVICES[mid[1]]) m._services=UC_SERVICES[mid[1]];
-        });
-        if(typeof renderTable==='function') renderTable();
-        if(window.KG) KG.rebuildIfNeeded();
-      }
-    }
+    if(d){ UC_SERVICES=d; console.log('UC_SERVICES loaded:',Object.keys(d).length,'missions'); _attachServices(); }
   }).catch(function(){});
 })();
 
@@ -808,8 +818,14 @@ function diffDot(tip){return'<sup class="diff-dot" title="'+escHtml(tip)+'">●<
 
 function processData(portfolio,ucr){
   var portfolioMap=new Map();
+  // Build UCR ID -> DC mission ID mapping from portfolio links
+  _ucrIdToDcId={};
   portfolio.forEach(function(r){
-    var id=String(r['UCR ID']||'').trim();
+    var ucrId=String(r['UCR ID']||'').trim();
+    var lnk=String(r['Link to Discovery Center']||'');
+    var mid=lnk.match(/missiondetail\/(\d+)/);
+    if(ucrId&&mid) _ucrIdToDcId[ucrId]=mid[1];
+    var id=ucrId;
     if(id)portfolioMap.set(id,r);
   });
 
@@ -893,11 +909,7 @@ function processData(portfolio,ucr){
       '_ucr_expiry':expiry,
       '_ucr_modified':modified,
       '_ucr_detail': UC_DETAILS[ucrId] || null,
-      '_services': (function(){
-        var lnk=p?String(p['Link to Discovery Center']||''):'';
-        var mid=lnk.match(/missiondetail\/(\d+)/);
-        return mid?UC_SERVICES[mid[1]]||[]:[];
-      })(),
+      '_services': [],
       '_diffs':diffs,
       '_rev_lang':revLang,
       '_rev_qual':revQual,
@@ -925,6 +937,8 @@ function processData(portfolio,ucr){
   renderKPIs();
   renderCharts();
   applyFilters();
+  // Attach services now that missions are built and UCR->DC map is ready
+  _attachServices();
   // Set --tiles-h from cat+coach col height after charts render
   setTimeout(function(){
     var col=document.querySelector('.cat-coach-col');
