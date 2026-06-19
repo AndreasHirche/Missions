@@ -417,7 +417,21 @@ var UC_SERVICES = {};
 (function loadUcServices(){
   if(location.protocol==='file:')return;
   fetch('uc_services.json').then(function(r){return r.ok?r.json():null;}).then(function(d){
-    if(d){ UC_SERVICES=d; console.log('UC_SERVICES loaded:',Object.keys(d).length,'missions'); }
+    if(d){
+      UC_SERVICES=d;
+      console.log('UC_SERVICES loaded:',Object.keys(d).length,'missions');
+      // Re-attach services to already-loaded missions
+      if(window.allMissions&&window.allMissions.length){
+        allMissions.forEach(function(m){
+          var id=String(m['UCR ID']||'');
+          if(id&&UC_SERVICES[id]) m._services=UC_SERVICES[id];
+        });
+        // Trigger re-render of table if visible
+        if(typeof renderTable==='function') renderTable();
+        // Rebuild KG if open
+        if(window.KG) KG.rebuildIfNeeded();
+      }
+    }
   }).catch(function(){});
 })();
 
@@ -429,7 +443,17 @@ var UC_DETAILS = {};
     if(!r.ok)return;
     return r.json();
   }).then(function(d){
-    if(d){ UC_DETAILS=d; console.log('UC_DETAILS loaded:',Object.keys(d).length,'entries'); }
+    if(d){
+      UC_DETAILS=d;
+      console.log('UC_DETAILS loaded:',Object.keys(d).length,'entries');
+      if(window.allMissions&&window.allMissions.length){
+        allMissions.forEach(function(m){
+          var id=String(m['UCR ID']||'');
+          if(id&&UC_DETAILS[id]) m._ucr_detail=UC_DETAILS[id];
+        });
+        if(typeof renderTable==='function') renderTable();
+      }
+    }
   }).catch(function(){});
 })();
 
