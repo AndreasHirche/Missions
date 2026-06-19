@@ -23,7 +23,7 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel{background:var(--bg);z-index:10;overflow:hidden;flex-shrink:0;border-bottom:1px solid transparent;transition:border-color .3s}
 #top-panel.compact{border-color:var(--border)}
 /* Scroll area fills remaining height automatically */
-#scroll-area{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+#scroll-area{flex:1;overflow:visible;display:flex;flex-direction:column;min-height:0}
 #scroll-area .wrap-table{flex:1;display:flex;flex-direction:column;padding:0 4px 4px;min-height:0;gap:4px}
 #scroll-area .table-toolbar{flex-shrink:0}
 #scroll-area .tbl-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
@@ -2162,7 +2162,13 @@ var KG = (function(){
       built=false; buildFromDashboard();
       mode==='2d'?render2d():render3d();
     },
-    buildPreview: function(){ if(!built)buildFromDashboard(); renderMini(); },
+    buildPreview: function(){
+      if(!built){ var ok=buildFromDashboard(); if(!ok)return; }
+      // Always update label even if renderMini fails
+      var lbl=document.getElementById('kgTileLabel');
+      if(lbl&&allNodes.length) lbl.textContent=allNodes.filter(function(n){return n.type==='mission';}).length+' missions · click to explore';
+      renderMini();
+    },
   };
 })();
 
