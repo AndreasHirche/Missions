@@ -123,16 +123,14 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .filters select option{background:#1a1a2e;color:#e2e8f0}
 
 /* Table */
-.tbl-wrap{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);overflow:clip}
+.tbl-wrap{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px)}
 .tbl-scroll{overflow-x:scroll;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05);border-radius:12px}
 .tbl-scroll::-webkit-scrollbar{height:7px;width:7px}
 .tbl-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,0.03);border-radius:0 0 12px 12px}
 .tbl-scroll::-webkit-scrollbar-thumb{background:#7c3aed;border-radius:4px}
 .tbl-scroll::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
 .tbl-scroll::-webkit-scrollbar-corner{background:rgba(255,255,255,0.03)}
-.tbl-scroll::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
-.tbl-scroll::-webkit-scrollbar-corner{background:rgba(255,255,255,0.03)}
-table{width:100%;border-collapse:collapse;font-size:0.81rem;min-width:600px}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:0.81rem;min-width:600px}
 thead th{padding:11px 14px;text-align:left;font-weight:600;font-size:0.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;background:rgba(6,7,15,0.97);position:sticky;top:0;z-index:2}
 thead th.sortable{cursor:pointer;user-select:none}
 thead th.sortable:hover{color:var(--text)}
@@ -2203,12 +2201,20 @@ document.addEventListener('DOMContentLoaded',function(){
   setInterval(function(){
     var curLen=window.allMissions&&window.allMissions.length||0;
     var curSvcLen=Object.keys(window.UC_SERVICES||{}).length;
-    if(curLen!==_prevLen||(curLen>0&&curSvcLen!==_prevSvcLen)){
-      _prevLen=curLen;
-      _prevSvcLen=curSvcLen;
+    if(curLen>0&&(curLen!==_prevLen||curSvcLen!==_prevSvcLen)){
+      _prevLen=curLen; _prevSvcLen=curSvcLen;
       KG.rebuildIfNeeded();
-      KG.buildPreview();
-      document.getElementById('kgTileLabel').textContent=window.allMissions.length+' missions loaded — click to explore';
+      // Try to build preview, retry if SVG not yet sized
+      (function tryBuild(attempt){
+        var el=document.getElementById('kgPreview');
+        var r=el&&el.getBoundingClientRect();
+        if(r&&r.width>20&&r.height>20){
+          KG.buildPreview();
+        } else if(attempt<10){
+          setTimeout(function(){tryBuild(attempt+1);},300);
+        }
+      })(0);
+      document.getElementById('kgTileLabel').textContent=curLen+' missions — click to explore';
     }
   },1000);
 
