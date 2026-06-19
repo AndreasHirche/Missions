@@ -319,6 +319,7 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
     <select id="fMonth" onchange="applyFilters()"><option value=""></option></select>
     <select id="fCompany" onchange="applyFilters()"><option value=""></option></select>
     <select id="fAuthor" onchange="applyFilters()"><option value=""></option></select>
+    <select id="fChannels" onchange="applyFilters()"><option value=""></option></select>
   </div>
 
 </div><!-- /.wrap #top-panel -->
@@ -594,7 +595,7 @@ function clearCache(){
   localStorage.removeItem(CACHE_KEY);
   localStorage.removeItem('missions_cache_v4');
   allMissions=[];filtered=[];activeCoach='';
-  ['fStatus','fCategory','fMonth','fCompany','fAuthor'].forEach(function(id){document.getElementById(id).value='';});
+  ['fStatus','fCategory','fMonth','fCompany','fAuthor','fChannels'].forEach(function(id){document.getElementById(id).value='';});
   renderFileSources({});
   showNoData();
 }
@@ -779,6 +780,7 @@ function processData(portfolio,ucr){
     var author =getF(r,'Owner','Author','Created By','Submitted By');
     var coach  =getF(r,'Coach','Coach name(s)')||(p?String(p['Coach name(s)']||'').trim():'');
     var company=getF(r,'Authoring Company','Company','Vendor');
+    var channels=getF(r,'Published Channels','publishedChannels')||'';
     var expiry =r['Expiry Date']||'';
     var modified=r['Last Modified On']||'';
 
@@ -840,6 +842,7 @@ function processData(portfolio,ucr){
       'Author':author,
       'Authoring Company':company,
       'Coach name(s)':coach,
+      'Published Channels':channels,
       '_ucr':r,
       '_portfolio':p,
       '_coach':coach,
@@ -868,6 +871,7 @@ function processData(portfolio,ucr){
   buildStatusFilter();
   buildCompanyFilter();
   buildAuthorFilter();
+  buildChannelsFilter();
   renderKPIs();
   renderCharts();
   applyFilters();
@@ -909,6 +913,18 @@ function buildCategoryFilter(){
   var sorted=Object.keys(cats).sort();
   var sel=document.getElementById('fCategory');
   sorted.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c+' ('+cats[c]+')';sel.appendChild(o);});
+}
+
+function buildChannelsFilter(){
+  var chans={};
+  allMissions.forEach(function(m){
+    var v=String(m['Published Channels']||'').trim();
+    v.split(',').forEach(function(c){c=c.trim();if(c)chans[c]=(chans[c]||0)+1;});
+  });
+  var sel=document.getElementById('fChannels');
+  Object.keys(chans).sort().forEach(function(c){
+    var o=document.createElement('option');o.value=c;o.textContent=c+' ('+chans[c]+')';sel.appendChild(o);
+  });
 }
 
 // ── Month filter ───────────────────────────────────────────────────────
@@ -1122,6 +1138,8 @@ function filterByCell(col, value){
     document.getElementById('fAuthor').value=value;
   } else if(col==='company'){
     document.getElementById('fCompany').value=value;
+  } else if(col==='channels'){
+    document.getElementById('fChannels').value=value;
   } else if(col==='_coach'){
     setCoach(value);
     return;
@@ -1137,12 +1155,14 @@ function renderChips(){
   var fMonth=document.getElementById('fMonth').value;
   var fCompany=document.getElementById('fCompany').value;
   var fAuthor=document.getElementById('fAuthor').value;
+  var fChannels=document.getElementById('fChannels').value;
   if(st) chips.push({label:'Status: '+st, clear:function(){document.getElementById('fStatus').value='';applyFilters();}});
   if(cat) chips.push({label:'Category: '+cat, clear:function(){document.getElementById('fCategory').value='';applyFilters();}});
   if(activeCoach) chips.push({label:'Coach: '+activeCoach, clear:function(){setCoach('');}});
   if(fMonth) chips.push({label:'Modified: '+fMonth, clear:function(){document.getElementById('fMonth').value='';applyFilters();}});
   if(fCompany) chips.push({label:'Company: '+fCompany, clear:function(){document.getElementById('fCompany').value='';applyFilters();}});
   if(fAuthor) chips.push({label:'Author: '+fAuthor, clear:function(){document.getElementById('fAuthor').value='';applyFilters();}});
+  if(fChannels) chips.push({label:'Channel: '+fChannels, clear:function(){document.getElementById('fChannels').value='';applyFilters();}});
   if(q) chips.push({label:'Search: '+q, clear:function(){document.getElementById('search').value='';applyFilters();}});
   var row=document.getElementById('chipRow');
   if(!chips.length){row.innerHTML='';return;}
@@ -1166,12 +1186,17 @@ function applyFilters(){
   var fMonth=document.getElementById('fMonth').value;
   var fCompany=document.getElementById('fCompany').value;
   var fAuthor=document.getElementById('fAuthor').value;
+  var fChannels=document.getElementById('fChannels').value;
 
   filtered=allMissions.filter(function(m){
     if(st&&String(m['STATUS']||'').trim()!==st)return false;
     if(cat&&String(m['Category']||'').trim()!==cat)return false;
     if(fCompany&&String(m['Authoring Company']||'').trim()!==fCompany)return false;
     if(fAuthor&&String(m['Author']||'').trim()!==fAuthor)return false;
+    if(fChannels){
+      var ch=String(m['Published Channels']||'');
+      if(!ch.split(',').map(function(s){return s.trim();}).includes(fChannels))return false;
+    }
     if(activeCoach){var c=String(m['Coach name(s)']||m._ucr&&m._ucr['Coach']||'').trim();if(c!==activeCoach)return false;}
     if(fMonth){
       var d=toDate(m._ucr_modified);
@@ -1220,6 +1245,7 @@ var COLS=[
   {key:'_coach',label:'Coach',sortable:true,filterCol:'coach'},
   {key:'Author',label:'Author',sortable:true,tdClass:'td-muted',filterCol:'author'},
   {key:'STATUS',label:'Status',sortable:true,filterCol:'status'},
+  {key:'Published Channels',label:'Channels',sortable:true,filterCol:'channels'},
   {key:'UCR ID',label:'UCR',sortable:true},
   {key:'_ucr_expiry',label:'Expiry',sortable:true},
   {key:'_ucr_modified',label:'Modified',sortable:true,tdClass:'td-muted',filterCol:'month'},
@@ -1308,6 +1334,7 @@ function renderTable(){
       +'<td class="td-muted filterable" title="Filter by coach" onclick="filterByCell(\'_coach\',\''+escHtml(coach)+'\')" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+coachCell+'</td>'
       +'<td class="td-muted filterable" title="Filter by author" onclick="filterByCell(\'Author\',\''+escHtml(author)+'\')">'+escHtml(author||'—')+(d.author?diffDot(d.author):'')+'</td>'
       +'<td class="filterable" title="Filter by status" onclick="filterByCell(\'STATUS\',\''+escHtml(String(m['STATUS']||'').trim())+'\')">'+(badgeStatus(m['STATUS']))+(d.status?diffDot(d.status):'')+'</td>'
+      +'<td class="td-muted filterable" style="font-size:.72rem;white-space:nowrap" title="Filter by channel" onclick="filterByCell(\'channels\',this.dataset.val)" data-val="'+escHtml(String(m['Published Channels']||'').split(',')[0].trim())+'">'+escHtml((m['Published Channels']||'—').split(',').map(function(c){return c.trim();}).join(', '))+'</td>'
       +'<td style="white-space:nowrap">'+ucrLink+'</td>'
       +'<td style="white-space:nowrap">'+expCell+'</td>'
       +'<td class="td-muted" style="white-space:nowrap">'+fmtDate(m._ucr_modified)+'</td>'
@@ -1405,6 +1432,13 @@ function openColFilter(col, btn, event){
     allMissions.forEach(function(m){var a=String(m['Author']||'').trim();if(a&&!seen[a]){seen[a]=true;options.push({val:a,label:a});}});
     options.sort(function(a,b){return a.label.localeCompare(b.label);});
     options.unshift({val:'',label:'(All)'});
+  }else if(col==='channels'){
+    curVal=document.getElementById('fChannels').value;
+    var chCount={};
+    allMissions.forEach(function(m){
+      String(m['Published Channels']||'').split(',').forEach(function(c){c=c.trim();if(c)chCount[c]=(chCount[c]||0)+1;});
+    });
+    options=[{val:'',label:'(All)'}].concat(Object.keys(chCount).sort().map(function(c){return{val:c,label:c+' ('+chCount[c]+')'};}));
   }
   drop.innerHTML=options.map(function(opt){
     var isActive=opt.val===curVal;
@@ -1426,6 +1460,7 @@ function selectColFilter(col, val){
   else if(col==='month'){document.getElementById('fMonth').value=val;applyFilters();}
   else if(col==='company'){document.getElementById('fCompany').value=val;applyFilters();}
   else if(col==='author'){document.getElementById('fAuthor').value=val;applyFilters();}
+  else if(col==='channels'){document.getElementById('fChannels').value=val;applyFilters();}
 }
 
 document.addEventListener('click',function(e){
@@ -1470,6 +1505,12 @@ init();
     </div>
     <select id="kgCatFilter" onchange="kgApplyF()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 8px;color:#e2e8f0;font-size:0.74rem;outline:none;font-family:'Inter',sans-serif">
       <option value="">All Categories</option>
+    </select>
+    <select id="kgChanFilter" onchange="kgApplyF()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 8px;color:#e2e8f0;font-size:0.74rem;outline:none;font-family:'Inter',sans-serif">
+      <option value="">All Channels</option>
+      <option value="Discovery Center">Discovery Center</option>
+      <option value="Content Discovery">Content Discovery</option>
+      <option value="SAP.COM">SAP.COM</option>
     </select>
     <div class="kg-li" onclick="kgZoomFit()" style="color:#7c3aed">⟳ Reset</div>
     <span id="kg-edge-count" style="font-size:0.67rem;color:#334155;margin-left:4px"></span>
@@ -1523,7 +1564,7 @@ var KG = (function(){
   var graph3d=null, mode='2d';
   var vis={mission:1,category:1,coach:1,tag:1};
   var multiCatMode=false;
-  var filt={q:'',cat:''};
+  var filt={q:'',cat:'',chan:''};
   var built=false, selNode=null;
 
   function normCat(c){ return CAT_NORM[(c||'').toLowerCase()]||c; }
@@ -1547,7 +1588,7 @@ var KG = (function(){
       var name=m['Mission Name']||m['Title']||('Mission '+m['UCR ID']);
       var url=m['Link to Discovery Center']||'#';
       var coach=(m['Coach name(s)']||'').trim();
-      node(mid, name, 'mission', {ucId:m['UCR ID'],status,url,coach});
+      node(mid, name, 'mission', {ucId:m['UCR ID'],status,url,coach,channels:m['Published Channels']||''});
 
       var catRaw=String(m['Category']||'Other').trim();
       var catParts=catRaw.split(',').map(function(c){return normCat(c.trim());}).filter(Boolean);
@@ -1672,6 +1713,11 @@ var KG = (function(){
     var nodes=allNodes.filter(function(n){
       if(!vis[n.type]) return false;
       if(filt.q&&!n.label.toLowerCase().includes(filt.q)) return false;
+      // Channel filter: hide missions not published in chosen channel
+      if(filt.chan&&n.type==='mission'){
+        var ch=n.channels||'';
+        if(!ch.split(',').map(function(c){return c.trim();}).includes(filt.chan)) return false;
+      }
       return true;
     });
     if(filt.cat){
@@ -1970,7 +2016,8 @@ var KG = (function(){
       mode==='2d'?render2d():render3d();
     },
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
-    catFilter: function(c){ filt.cat=c; mode==='2d'?render2d():render3d(); },
+    catFilter: function(c,ch){ filt.cat=c; filt.chan=ch||filt.chan; mode==='2d'?render2d():render3d(); },
+    chanFilter: function(ch){ filt.chan=ch; mode==='2d'?render2d():render3d(); },
     zoomFit: function(){ if(mode==='2d')zoomFit2d(); else if(graph3d)graph3d.zoomToFit(400); },
     focusNode: function(id){
       var n=(window._kgNd||[]).find(x=>x.id===id); if(!n)return;
@@ -2010,7 +2057,10 @@ function kgToggleMultiCat(el){
 }
 function kgToggleT(el){ KG.toggleT(el); }
 function kgOnSearch(){ KG.search(document.getElementById('kgSearch').value.toLowerCase().trim()); }
-function kgApplyF(){ KG.catFilter(document.getElementById('kgCatFilter').value); }
+function kgApplyF(){
+  KG.catFilter(document.getElementById('kgCatFilter').value);
+  KG.chanFilter(document.getElementById('kgChanFilter').value);
+}
 function kgZoomFit(){ KG.zoomFit(); }
 
 // Update tile label when data loads
