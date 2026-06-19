@@ -123,8 +123,8 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .filters select option{background:#1a1a2e;color:#e2e8f0}
 
 /* Table */
-.tbl-wrap{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px)}
-.tbl-scroll{overflow-x:scroll;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
+.tbl-wrap{background:var(--glass);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);overflow:clip}
+.tbl-scroll{overflow-x:scroll;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05);border-radius:12px}
 .tbl-scroll::-webkit-scrollbar{height:7px;width:7px}
 .tbl-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,0.03);border-radius:0 0 12px 12px}
 .tbl-scroll::-webkit-scrollbar-thumb{background:#7c3aed;border-radius:4px}
@@ -2185,9 +2185,13 @@ function kgZoomFit(){ KG.zoomFit(); }
 // Update tile label when data loads
 document.addEventListener('DOMContentLoaded',function(){
   var _prevLen=0;
+  var _prevSvcLen=0;
   setInterval(function(){
-    if(window.allMissions&&window.allMissions.length!==_prevLen){
-      _prevLen=window.allMissions.length;
+    var curLen=window.allMissions&&window.allMissions.length||0;
+    var curSvcLen=Object.keys(window.UC_SERVICES||{}).length;
+    if(curLen!==_prevLen||(curLen>0&&curSvcLen!==_prevSvcLen)){
+      _prevLen=curLen;
+      _prevSvcLen=curSvcLen;
       KG.rebuildIfNeeded();
       KG.buildPreview();
       document.getElementById('kgTileLabel').textContent=window.allMissions.length+' missions loaded — click to explore';
