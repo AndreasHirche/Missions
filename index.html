@@ -946,8 +946,14 @@ function renderKPIs(){
 function renderCharts(){
   Chart.defaults.color='#94a3b8';
 
+  // Destroy any existing chart on a canvas by ID (handles stale Chart.js registry)
+  function destroyChart(id){
+    var existing=Chart.getChart(id);
+    if(existing)existing.destroy();
+  }
+
   // Status donut
-  if(statusChart)statusChart.destroy();
+  destroyChart('statusChart'); if(statusChart)statusChart.destroy();
   var statusCounts=STATUS_ORDER.map(function(s){
     return allMissions.filter(function(m){return String(m['STATUS']||'')===s;}).length;
   });
@@ -998,7 +1004,7 @@ function renderCharts(){
   allMissions.forEach(function(m){var c=String(m['Category']||'').trim()||'(none)';catCounts[c]=(catCounts[c]||0)+1;});
   var catSorted=Object.entries(catCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,12);
 
-  if(categoryChart)categoryChart.destroy();
+  destroyChart('categoryChart'); if(categoryChart)categoryChart.destroy();
   categoryChart=new Chart(document.getElementById('categoryChart'),{
     type:'bar',
     data:{
@@ -1037,7 +1043,7 @@ function renderCharts(){
     if(c)coachCounts[c]=(coachCounts[c]||0)+1;
   });
   var coachSorted=Object.entries(coachCounts).sort(function(a,b){return b[1]-a[1];});
-  if(coachChart)coachChart.destroy();
+  destroyChart('coachChart'); if(coachChart)coachChart.destroy();
   coachChart=new Chart(document.getElementById('coachChart'),{
     type:'bar',
     data:{
