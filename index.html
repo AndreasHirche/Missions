@@ -412,6 +412,15 @@ var STATUS_COLORS={
   Archived:'rgba(251,191,36,0.75)'
 };
 
+// Services per mission loaded from uc_services.json
+var UC_SERVICES = {};
+(function loadUcServices(){
+  if(location.protocol==='file:')return;
+  fetch('uc_services.json').then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(d){ UC_SERVICES=d; console.log('UC_SERVICES loaded:',Object.keys(d).length,'missions'); }
+  }).catch(function(){});
+})();
+
 // UC Detail data loaded from uc_details.json (fetched once at startup)
 var UC_DETAILS = {};
 (function loadUcDetails(){
@@ -861,6 +870,7 @@ function processData(portfolio,ucr){
       '_ucr_expiry':expiry,
       '_ucr_modified':modified,
       '_ucr_detail': UC_DETAILS[ucrId] || null,
+      '_services': UC_SERVICES[String(ucrId)] || [],
       '_diffs':diffs,
       '_rev_lang':revLang,
       '_rev_qual':revQual,
@@ -1260,6 +1270,7 @@ var COLS=[
   {key:'STATUS',label:'Status',sortable:true,filterCol:'status'},
   {key:'Published Channels',label:'Channels',sortable:true,filterCol:'channels'},
   {key:'_focus_topics',label:'Focus Topics',sortable:false},
+  {key:'_services',label:'Services',sortable:false},
   {key:'_effort',label:'Effort',sortable:true},
   {key:'UCR ID',label:'UCR',sortable:true},
   {key:'_ucr_expiry',label:'Expiry',sortable:true},
@@ -1354,7 +1365,10 @@ function renderTable(){
         var det=m._ucr_detail||{};
         var ft=(det.focusTopics||[]).slice(0,3).join(', ')||'—';
         var ef={'DAYS_2_4':'2-4d','APPROX_1_DAY':'~1d','MORE_THAN_4_DAYS':'>4d','UP_TO_4_HOURS':'<4h'}[det.effort||'']||'—';
+        var svcs=(m._services||[]);
+        var svcTxt=svcs.length?svcs.slice(0,3).join(', ')+(svcs.length>3?' +'+( svcs.length-3):''):'—';
         return '<td class="td-muted" style="font-size:.72rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml((det.focusTopics||[]).join(', '))+'">'+escHtml(ft)+'</td>'
+              +'<td class="td-muted" style="font-size:.72rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(svcs.join(', '))+'">'+escHtml(svcTxt)+'</td>'
               +'<td class="td-muted" style="font-size:.72rem;white-space:nowrap">'+escHtml(ef)+'</td>';
       })()
       +'<td style="white-space:nowrap">'+ucrLink+'</td>'
@@ -1520,6 +1534,7 @@ init();
     <div class="kg-li on" data-t="tag"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fbbf24"></div>Tag <span id="kg-cnt-tag" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="company"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#2dd4bf"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="focus"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li" data-t="service"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f43f5e"></div>Services <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" id="kg-li-multicat" onclick="kgToggleMultiCat(this)" title="Show all categories per mission (not just the first)" style="border:1px solid #334155;margin-left:4px"><div class="kg-ld" style="background:#4ade80"></div>All Categories <span id="kg-cnt-multicat" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
@@ -1575,6 +1590,7 @@ var KG = (function(){
     tag:      {color:'#fbbf24', stroke:'#92400e', rBase:9},
     company:  {color:'#2dd4bf', stroke:'#0f766e', rBase:12},
     focus:    {color:'#f97316', stroke:'#9a3412', rBase:11},
+    service:  {color:'#f43f5e', stroke:'#9f1239', rBase:10},
   };
   var STATUS_COLOR = {published:'#4ade80','in progress':'#38bdf8',draft:'#94a3b8',retired:'#f87171',
     Published:'#4ade80','In Progress':'#38bdf8',Draft:'#94a3b8',Retired:'#f87171','In Review':'#fbbf24'};
@@ -1591,7 +1607,7 @@ var KG = (function(){
 
   var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, labelSel;
   var graph3d=null, mode='2d';
-  var vis={mission:1,category:1,coach:1,tag:1,company:0,focus:0};
+  var vis={mission:1,category:1,coach:1,tag:1,company:0,focus:0,service:0};
   var multiCatMode=false;
   var filt={q:'',cat:'',chan:'',co:''};
   var built=false, selNode=null;
@@ -1656,6 +1672,14 @@ var KG = (function(){
         node('ft:'+ft, ft, 'focus').count++;
         links.push({source:mid, target:'ft:'+ft, rel:'focus'});
       });
+
+      // Services from UC_SERVICES
+      var svcs=UC_SERVICES[String(m['UCR ID'])]||[];
+      svcs.forEach(function(svc){
+        if(!svc)return;
+        node('svc:'+svc, svc, 'service').count++;
+        links.push({source:mid, target:'svc:'+svc, rel:'service'});
+      });
     });
     allNodes=Object.values(nodes);
     allLinks=links;
@@ -1673,10 +1697,12 @@ var KG = (function(){
     var tc=allNodes.filter(n=>n.type==='tag').length;
     var coc=allNodes.filter(n=>n.type==='company').length;
     var foc=allNodes.filter(n=>n.type==='focus').length;
+    var sovc=allNodes.filter(n=>n.type==='service').length;
     var cm2=document.getElementById('kg-cnt-multicat');
     if(cm2)cm2.textContent=multiCatMode?'on':'';
     var coc2=document.getElementById('kg-cnt-company'); if(coc2)coc2.textContent=coc;
     var foc2=document.getElementById('kg-cnt-focus'); if(foc2)foc2.textContent=foc;
+    var svc2=document.getElementById('kg-cnt-service'); if(svc2)svc2.textContent=sovc;
     // Populate company filter dropdown
     var coSel=document.getElementById('kgCoFilter');
     if(coSel&&coSel.options.length<=1){
