@@ -10,7 +10,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#06070f;--glass:rgba(255,255,255,0.05);--border:rgba(255,255,255,0.1);--purple:#7c3aed;--cyan:#06b6d4;--text:#e2e8f0;--muted:#94a3b8}
-html,body{height:100%;overflow:hidden;display:flex;flex-direction:column}
+html,body{height:100%;overflow:clip;display:flex;flex-direction:column}
 :root{--top-h:50vh}
 html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 ::-webkit-scrollbar{width:7px;height:7px}
@@ -2163,8 +2163,7 @@ var KG = (function(){
       mode==='2d'?render2d():render3d();
     },
     buildPreview: function(){
-      if(!built){ var ok=buildFromDashboard(); if(!ok)return; }
-      // Always update label even if renderMini fails
+      if(!built){ var ok=buildFromDashboard(); if(!ok){ console.warn('KG buildFromDashboard failed, allMissions=',window.allMissions&&window.allMissions.length); return; } }
       var lbl=document.getElementById('kgTileLabel');
       if(lbl&&allNodes.length) lbl.textContent=allNodes.filter(function(n){return n.type==='mission';}).length+' missions · click to explore';
       renderMini();
