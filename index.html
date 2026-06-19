@@ -2016,8 +2016,9 @@ var KG = (function(){
       mode==='2d'?render2d():render3d();
     },
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
-    catFilter: function(c,ch){ filt.cat=c; filt.chan=ch||filt.chan; mode==='2d'?render2d():render3d(); },
+    catFilter: function(c){ filt.cat=c; mode==='2d'?render2d():render3d(); },
     chanFilter: function(ch){ filt.chan=ch; mode==='2d'?render2d():render3d(); },
+    setFilter: function(f){ if(f.cat!==undefined)filt.cat=f.cat; if(f.chan!==undefined)filt.chan=f.chan; mode==='2d'?render2d():render3d(); },
     zoomFit: function(){ if(mode==='2d')zoomFit2d(); else if(graph3d)graph3d.zoomToFit(400); },
     focusNode: function(id){
       var n=(window._kgNd||[]).find(x=>x.id===id); if(!n)return;
@@ -2058,8 +2059,9 @@ function kgToggleMultiCat(el){
 function kgToggleT(el){ KG.toggleT(el); }
 function kgOnSearch(){ KG.search(document.getElementById('kgSearch').value.toLowerCase().trim()); }
 function kgApplyF(){
-  KG.catFilter(document.getElementById('kgCatFilter').value);
-  KG.chanFilter(document.getElementById('kgChanFilter').value);
+  var cat=document.getElementById('kgCatFilter').value;
+  var chan=document.getElementById('kgChanFilter').value;
+  KG.setFilter({cat:cat,chan:chan});
 }
 function kgZoomFit(){ KG.zoomFit(); }
 
