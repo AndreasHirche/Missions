@@ -1763,7 +1763,7 @@ var KG = (function(){
     var cc2=document.getElementById('kg-cnt-category'); if(cc2)cc2.textContent=cc;
     var ch2=document.getElementById('kg-cnt-coach'); if(ch2)ch2.textContent=ch;
     var ct=document.getElementById('kg-cnt-tag'); if(ct)ct.textContent=tc;
-    var cm2=document.getElementById('kg-cnt-multicat'); if(cm2)cm2.textContent=mcc;
+    var cm2=document.getElementById('kg-cnt-multicat'); if(cm2)cm2.textContent=multiCatMode?'on':'';
     document.getElementById('kgTileLabel').textContent=mc+' missions · '+cc+' categories · '+ch+' coaches · '+tc+' tags';
     built=true;
     // render mini preview — wait for layout
