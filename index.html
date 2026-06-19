@@ -133,7 +133,7 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .tbl-scroll::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
 .tbl-scroll::-webkit-scrollbar-corner{background:rgba(255,255,255,0.03)}
 table{width:100%;border-collapse:collapse;font-size:0.81rem;min-width:600px}
-thead th{padding:11px 14px;text-align:left;font-weight:600;font-size:0.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;background:rgba(0,0,0,0.2)}
+thead th{padding:11px 14px;text-align:left;font-weight:600;font-size:0.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;background:rgba(6,7,15,0.97);position:sticky;top:0;z-index:2}
 thead th.sortable{cursor:pointer;user-select:none}
 thead th.sortable:hover{color:var(--text)}
 .sort-icon{opacity:0.35;margin-left:4px;font-style:normal}
@@ -420,15 +420,14 @@ var UC_SERVICES = {};
     if(d){
       UC_SERVICES=d;
       console.log('UC_SERVICES loaded:',Object.keys(d).length,'missions');
-      // Re-attach services to already-loaded missions
       if(window.allMissions&&window.allMissions.length){
         allMissions.forEach(function(m){
-          var id=String(m['UCR ID']||'');
-          if(id&&UC_SERVICES[id]) m._services=UC_SERVICES[id];
+          // DC mission ID is in the Link to Discovery Center URL: /missiondetail/3643/...
+          var link=String(m['Link to Discovery Center']||'');
+          var mid=link.match(/missiondetail\/(\d+)/);
+          if(mid&&UC_SERVICES[mid[1]]) m._services=UC_SERVICES[mid[1]];
         });
-        // Trigger re-render of table if visible
         if(typeof renderTable==='function') renderTable();
-        // Rebuild KG if open
         if(window.KG) KG.rebuildIfNeeded();
       }
     }
@@ -894,7 +893,11 @@ function processData(portfolio,ucr){
       '_ucr_expiry':expiry,
       '_ucr_modified':modified,
       '_ucr_detail': UC_DETAILS[ucrId] || null,
-      '_services': UC_SERVICES[String(ucrId)] || [],
+      '_services': (function(){
+        var lnk=p?String(p['Link to Discovery Center']||''):'';
+        var mid=lnk.match(/missiondetail\/(\d+)/);
+        return mid?UC_SERVICES[mid[1]]||[]:[];
+      })(),
       '_diffs':diffs,
       '_rev_lang':revLang,
       '_rev_qual':revQual,
@@ -1697,8 +1700,13 @@ var KG = (function(){
         links.push({source:mid, target:'ft:'+ft, rel:'focus'});
       });
 
-      // Services from UC_SERVICES
-      var svcs=UC_SERVICES[String(m['UCR ID'])]||[];
+      // Services from UC_SERVICES (keyed by DC mission ID from link)
+      var svcs=(m._services||[]);
+      if(!svcs.length){
+        var lnk2=String(m['Link to Discovery Center']||'');
+        var mid2=lnk2.match(/missiondetail\/(\d+)/);
+        if(mid2) svcs=UC_SERVICES[mid2[1]]||[];
+      }
       svcs.forEach(function(svc){
         if(!svc)return;
         node('svc:'+svc, svc, 'service').count++;
