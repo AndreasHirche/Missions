@@ -10,7 +10,8 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#06070f;--glass:rgba(255,255,255,0.05);--border:rgba(255,255,255,0.1);--purple:#7c3aed;--cyan:#06b6d4;--text:#e2e8f0;--muted:#94a3b8}
-html,body{height:100%;overflow:clip;display:flex;flex-direction:column}
+html{height:100%;scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
+body{height:100%;overflow:hidden;display:flex;flex-direction:column}
 :root{--top-h:50vh}
 html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 ::-webkit-scrollbar{width:7px;height:7px}
@@ -131,7 +132,8 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .tbl-scroll::-webkit-scrollbar-thumb:hover{background:#9f6cf0}
 .tbl-scroll::-webkit-scrollbar-corner{background:rgba(255,255,255,0.03)}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:0.81rem;min-width:600px}
-thead th{padding:11px 14px;text-align:left;font-weight:600;font-size:0.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;background:rgba(6,7,15,0.97);position:sticky;top:0;z-index:2}
+thead th{padding:11px 14px;text-align:left;font-weight:600;font-size:0.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;background:rgba(6,7,15,0.97);z-index:2;box-shadow:0 1px 0 var(--border)}
+thead{position:relative;z-index:2;will-change:transform}
 thead th.sortable{cursor:pointer;user-select:none}
 thead th.sortable:hover{color:var(--text)}
 .sort-icon{opacity:0.35;margin-left:4px;font-style:normal}
@@ -2230,6 +2232,9 @@ document.addEventListener('DOMContentLoaded',function(){
   tblScroll && tblScroll.addEventListener('scroll', function(){
     if(tblScroll.scrollTop > 0) topPanel.classList.add('compact');
     else topPanel.classList.remove('compact');
+    // Sync sticky header manually (body overflow:hidden blocks CSS sticky)
+    var thead=document.querySelector('thead');
+    if(thead) thead.style.transform='translateY('+tblScroll.scrollTop+'px)';
   }, {passive:true});
 
   window.measureTopFn = function(){};

@@ -228,7 +228,6 @@ if __name__ == "__main__":
     server = http.server.HTTPServer(("", PORT), Handler)
     print(f"Missions server running on http://localhost:{PORT}")
     print(f"UCR proxy at http://localhost:{PORT}/ucr-proxy")
-    threading.Timer(0.8, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
