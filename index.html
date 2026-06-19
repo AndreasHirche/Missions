@@ -412,6 +412,18 @@ var STATUS_COLORS={
   Archived:'rgba(251,191,36,0.75)'
 };
 
+// UC Detail data loaded from uc_details.json (fetched once at startup)
+var UC_DETAILS = {};
+(function loadUcDetails(){
+  if(location.protocol==='file:')return; // skip on file://
+  fetch('uc_details.json').then(function(r){
+    if(!r.ok)return;
+    return r.json();
+  }).then(function(d){
+    if(d){ UC_DETAILS=d; console.log('UC_DETAILS loaded:',Object.keys(d).length,'entries'); }
+  }).catch(function(){});
+})();
+
 // ── Excel loading ──────────────────────────────────────────────────────
 function parseExcel(ab){
   var wb=XLSX.read(ab,{type:'array',cellDates:true});
@@ -848,6 +860,7 @@ function processData(portfolio,ucr){
       '_coach':coach,
       '_ucr_expiry':expiry,
       '_ucr_modified':modified,
+      '_ucr_detail': UC_DETAILS[ucrId] || null,
       '_diffs':diffs,
       '_rev_lang':revLang,
       '_rev_qual':revQual,
@@ -1246,6 +1259,8 @@ var COLS=[
   {key:'Author',label:'Author',sortable:true,tdClass:'td-muted',filterCol:'author'},
   {key:'STATUS',label:'Status',sortable:true,filterCol:'status'},
   {key:'Published Channels',label:'Channels',sortable:true,filterCol:'channels'},
+  {key:'_focus_topics',label:'Focus Topics',sortable:false},
+  {key:'_effort',label:'Effort',sortable:true},
   {key:'UCR ID',label:'UCR',sortable:true},
   {key:'_ucr_expiry',label:'Expiry',sortable:true},
   {key:'_ucr_modified',label:'Modified',sortable:true,tdClass:'td-muted',filterCol:'month'},
@@ -1335,6 +1350,13 @@ function renderTable(){
       +'<td class="td-muted filterable" title="Filter by author" onclick="filterByCell(\'Author\',\''+escHtml(author)+'\')">'+escHtml(author||'—')+(d.author?diffDot(d.author):'')+'</td>'
       +'<td class="filterable" title="Filter by status" onclick="filterByCell(\'STATUS\',\''+escHtml(String(m['STATUS']||'').trim())+'\')">'+(badgeStatus(m['STATUS']))+(d.status?diffDot(d.status):'')+'</td>'
       +'<td class="td-muted filterable" style="font-size:.72rem;white-space:nowrap" title="Filter by channel" onclick="filterByCell(\'channels\',this.dataset.val)" data-val="'+escHtml(String(m['Published Channels']||'').split(',')[0].trim())+'">'+escHtml((m['Published Channels']||'—').split(',').map(function(c){return c.trim();}).join(', '))+'</td>'
+      +(function(){
+        var det=m._ucr_detail||{};
+        var ft=(det.focusTopics||[]).slice(0,3).join(', ')||'—';
+        var ef={'DAYS_2_4':'2-4d','APPROX_1_DAY':'~1d','MORE_THAN_4_DAYS':'>4d','UP_TO_4_HOURS':'<4h'}[det.effort||'']||'—';
+        return '<td class="td-muted" style="font-size:.72rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml((det.focusTopics||[]).join(', '))+'">'+escHtml(ft)+'</td>'
+              +'<td class="td-muted" style="font-size:.72rem;white-space:nowrap">'+escHtml(ef)+'</td>';
+      })()
       +'<td style="white-space:nowrap">'+ucrLink+'</td>'
       +'<td style="white-space:nowrap">'+expCell+'</td>'
       +'<td class="td-muted" style="white-space:nowrap">'+fmtDate(m._ucr_modified)+'</td>'
@@ -1497,6 +1519,7 @@ init();
     <div class="kg-li on" data-t="coach"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#c084fc"></div>Coach <span id="kg-cnt-coach" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li on" data-t="tag"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fbbf24"></div>Tag <span id="kg-cnt-tag" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="company"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#2dd4bf"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li" data-t="focus"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" id="kg-li-multicat" onclick="kgToggleMultiCat(this)" title="Show all categories per mission (not just the first)" style="border:1px solid #334155;margin-left:4px"><div class="kg-ld" style="background:#4ade80"></div>All Categories <span id="kg-cnt-multicat" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
@@ -1551,6 +1574,7 @@ var KG = (function(){
     coach:    {color:'#c084fc', stroke:'#7e22ce', rBase:13},
     tag:      {color:'#fbbf24', stroke:'#92400e', rBase:9},
     company:  {color:'#2dd4bf', stroke:'#0f766e', rBase:12},
+    focus:    {color:'#f97316', stroke:'#9a3412', rBase:11},
   };
   var STATUS_COLOR = {published:'#4ade80','in progress':'#38bdf8',draft:'#94a3b8',retired:'#f87171',
     Published:'#4ade80','In Progress':'#38bdf8',Draft:'#94a3b8',Retired:'#f87171','In Review':'#fbbf24'};
@@ -1567,7 +1591,7 @@ var KG = (function(){
 
   var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, labelSel;
   var graph3d=null, mode='2d';
-  var vis={mission:1,category:1,coach:1,tag:1,company:0};
+  var vis={mission:1,category:1,coach:1,tag:1,company:0,focus:0};
   var multiCatMode=false;
   var filt={q:'',cat:'',chan:'',co:''};
   var built=false, selNode=null;
@@ -1624,6 +1648,14 @@ var KG = (function(){
         node('co:'+company, company, 'company').count++;
         links.push({source:mid, target:'co:'+company, rel:'company'});
       }
+
+      // Focus Topics from UC_DETAILS
+      var det=UC_DETAILS[m['UCR ID']]||{};
+      (det.focusTopics||[]).forEach(function(ft){
+        if(!ft)return;
+        node('ft:'+ft, ft, 'focus').count++;
+        links.push({source:mid, target:'ft:'+ft, rel:'focus'});
+      });
     });
     allNodes=Object.values(nodes);
     allLinks=links;
@@ -1640,9 +1672,11 @@ var KG = (function(){
     var ch=allNodes.filter(n=>n.type==='coach').length;
     var tc=allNodes.filter(n=>n.type==='tag').length;
     var coc=allNodes.filter(n=>n.type==='company').length;
+    var foc=allNodes.filter(n=>n.type==='focus').length;
     var cm2=document.getElementById('kg-cnt-multicat');
     if(cm2)cm2.textContent=multiCatMode?'on':'';
     var coc2=document.getElementById('kg-cnt-company'); if(coc2)coc2.textContent=coc;
+    var foc2=document.getElementById('kg-cnt-focus'); if(foc2)foc2.textContent=foc;
     // Populate company filter dropdown
     var coSel=document.getElementById('kgCoFilter');
     if(coSel&&coSel.options.length<=1){

@@ -85,28 +85,47 @@ def extract_details(uc):
 
     def names(lst):
         if not lst: return []
-        return [x.get("name") or x.get("title") or str(x) for x in lst if x]
+        out = []
+        for x in lst:
+            if isinstance(x, str): out.append(x)
+            elif isinstance(x, dict):
+                out.append(x.get("name") or x.get("title") or x.get("label") or "")
+        return [s for s in out if s]
 
-    services       = names(props.get("serviceProducts") or props.get("services") or
-                           ext.get("serviceProducts") or ext.get("services") or [])
-    products       = names(props.get("product") or props.get("products") or
-                           ext.get("product") or ext.get("products") or [])
-    tags           = names(props.get("tags") or ext.get("tags") or [])
-    lob            = names(props.get("lob") or props.get("lineOfBusiness") or
-                           ext.get("lob") or ext.get("lineOfBusiness") or [])
-    partner_apps   = names(props.get("partnerSolutions") or props.get("partnerApplications") or
-                           ext.get("partnerSolutions") or ext.get("partnerApplications") or [])
+    tags        = names(props.get("tags") or [])
+    comm_tags   = names(ext.get("community_tags") or [])
+    lob         = names(props.get("lob") or [])
+    focus       = names(props.get("sap_focus_topics") or [])
+    processes   = names(props.get("rba_rsa_process") or props.get("sap_process") or [])
+    industries  = names(props.get("industry") or [])
+    cat_l2      = names(props.get("product_category_l2") or [])
+    cat_l1      = []
+    for c in (props.get("product_category_l2") or []):
+        if isinstance(c, dict) and c.get("product_category_l1"):
+            n = c["product_category_l1"].get("name","")
+            if n: cat_l1.append(n)
 
-    # Also check the rba_rsa_process (E2E processes)
-    processes      = [p.get("title","") for p in (props.get("rba_rsa_process") or []) if p]
+    # Extract SAP products from mission_prerequisites text
+    prereqs = ext.get("mission_prerequisites") or ""
+    sap_products = []
+    import re
+    for line in prereqs.split('\n'):
+        line = line.strip()
+        if line.startswith('SAP ') and len(line) < 120:
+            prod = re.sub(r'\s+under\s+SAP.*', '', line).strip()
+            if prod: sap_products.append(prod)
 
     return {
-        "services":    services,
-        "products":    products,
-        "tags":        tags,
-        "lob":         lob,
-        "partnerApps": partner_apps,
-        "processes":   processes,
+        "tags":       list(dict.fromkeys(tags)),
+        "commTags":   list(dict.fromkeys(comm_tags)),
+        "lob":        list(dict.fromkeys(lob)),
+        "focusTopics":list(dict.fromkeys(focus)),
+        "processes":  list(dict.fromkeys(processes)),
+        "industries": list(dict.fromkeys(industries)),
+        "catL1":      list(dict.fromkeys(cat_l1)),
+        "catL2":      list(dict.fromkeys(cat_l2)),
+        "sapProducts":list(dict.fromkeys(sap_products)),
+        "effort":     ext.get("mission_effort",""),
     }
 
 def main():
