@@ -33,8 +33,8 @@ var KG_COLORS={mission:'#fde047',category:'#d1d5db',coach:'#e879f9',tag:'#fbbf24
 var MOVE_SPEED=1.5, TURN_SPEED=0.025, DEADZONE=0.15;
 
 // ── State ──────────────────────────────────────────────────────────────────────
-var vis={mission:1,coach:1,company:1,service:1};
-var filterCat='', filterChan='', filterCo='';
+var vis={mission:1,coach:1,company:1,service:1,category:1};
+var filterChan='';
 var allNodes=[], allLinks=[], graphInst=null;
 
 var UC_SERVICES={}, UC_DC_IDS={}, UC_DETAILS={};
@@ -119,57 +119,18 @@ function buildFromDetails(){
 function typeKey(n){return (n.type==='svcopt'||n.type==='svcpartner')?'service':n.type;}
 
 function filteredData(){
-  var hasFilter=filterCat||filterChan||filterCo;
-
-  if(!hasFilter){
-    // Simple vis-only filter; always keep category nodes for layout
-    var keep=allNodes.filter(function(n){return vis[typeKey(n)]||n.type==='category';});
-    var nids=new Set(keep.map(function(n){return n.id;}));
-    var klinks=allLinks.filter(function(l){
-      var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
-      var rv=(l.rel==='category')?1:(vis[l.rel]||0);
-      return nids.has(s)&&nids.has(t)&&rv;
-    });
-    return{nodes:keep.map(function(n){return Object.assign({},n);}),links:klinks};
-  }
-
-  // With active filter: find matching missions first
-  var matchMissions=allNodes.filter(function(n){
-    if(n.type!=='mission')return false;
-    if(filterChan){
+  var keep=allNodes.filter(function(n){
+    if(!vis[typeKey(n)])return false;
+    if(filterChan&&n.type==='mission'){
       var ch=n.channels||'';
       if(!ch.split(',').map(function(c){return c.trim();}).includes(filterChan))return false;
     }
-    if(filterCo&&n.company!==filterCo)return false;
     return true;
-  });
-
-  if(filterCat){
-    var catId='cat:'+filterCat;
-    var catMids=new Set();
-    allLinks.forEach(function(l){
-      var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
-      if(t===catId)catMids.add(s);
-    });
-    matchMissions=matchMissions.filter(function(n){return catMids.has(n.id);});
-  }
-
-  var mids=new Set(matchMissions.map(function(n){return n.id;}));
-  var kept=new Set(mids);
-  if(filterCat)kept.add('cat:'+filterCat);
-  allLinks.forEach(function(l){
-    var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
-    if(mids.has(s))kept.add(t);
-  });
-
-  var keep=allNodes.filter(function(n){
-    return kept.has(n.id)&&(vis[typeKey(n)]||n.type==='category');
   });
   var nids=new Set(keep.map(function(n){return n.id;}));
   var klinks=allLinks.filter(function(l){
     var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
-    var rv=(l.rel==='category')?1:(vis[l.rel]||0);
-    return nids.has(s)&&nids.has(t)&&rv;
+    return nids.has(s)&&nids.has(t)&&(vis[l.rel]||0);
   });
   return{nodes:keep.map(function(n){return Object.assign({},n);}),links:klinks};
 }
@@ -201,16 +162,19 @@ function launchVR(missionCount){
     .nodeColor(nodeColor).nodeVal(nodeSize).nodeResolution(8)
     .nodeLabel(function(n){return n.label+(n.count?' ('+n.count+')':'');})
     .nodeVisibility(function(n){
-      if(filterCat&&n.type==='category'&&n.label!==filterCat)return false;
-      return !!(vis[typeKey(n)]||n.type==='category');
+      if(filterChan&&n.type==='mission'){
+        var ch=n.channels||'';
+        if(!ch.split(',').map(function(c){return c.trim();}).includes(filterChan))return false;
+      }
+      return !!vis[typeKey(n)];
     })
     .linkVisibility(function(l){
       var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
-      var sn=graphInst.graphData().nodes.find(function(n){return n.id===s;});
-      var tn=graphInst.graphData().nodes.find(function(n){return n.id===t;});
+      var gd=graphInst.graphData();
+      var sn=gd.nodes.find(function(n){return n.id===s;});
+      var tn=gd.nodes.find(function(n){return n.id===t;});
       if(!sn||!tn)return false;
-      var rv=(l.rel==='category')?1:(vis[l.rel]||0);
-      return !!rv;
+      return !!(vis[l.rel]||0);
     })
     .linkColor(function(l){return KG_COLORS[l.rel]||'#334155';})
     .linkOpacity(0.15).linkWidth(0.3)
@@ -244,14 +208,16 @@ function launchVR(missionCount){
   var exitPanel=null,controlPanel=null,hintPanel=null,titlePanel=null;
   var rigReady=false;
 
-  // ── Build control panel with toggles + 3 dropdowns ───────────────────────
+  // ── Build control panel: group toggles + channel filter ──────────────────
   function buildControlPanel(){
-    var W=740, lh=33, pad=12, fz=17, fzS=15;
-    var colW2=W/2, colW3=W/3;
-
-    // Collect filter data
-    var cats=allNodes.filter(function(n){return n.type==='category';})
-      .sort(function(a,b){return b.count-a.count;}).map(function(n){return n.label;});
+    var toggleDefs=[
+      {key:'mission',  label:'Mission',           color:'#fde047'},
+      {key:'service',  label:'Service & Partner', color:'#60a5fa'},
+      {key:'coach',    label:'Coach',             color:'#e879f9'},
+      {key:'category', label:'Category',          color:'#d1d5db'},
+      {key:'company',  label:'Company',           color:'#4ade80'},
+    ];
+    // Collect channels from mission nodes
     var chanSet={};
     allNodes.forEach(function(n){
       if(n.type==='mission'&&n.channels){
@@ -259,32 +225,14 @@ function launchVR(missionCount){
       }
     });
     var chans=Object.keys(chanSet).sort(function(a,b){return chanSet[b]-chanSet[a];});
-    var cos=allNodes.filter(function(n){return n.type==='company';})
-      .sort(function(a,b){return b.count-a.count;}).slice(0,12).map(function(n){return n.label;});
 
-    var toggleDefs=[
-      {key:'mission',label:'Mission',color:'#fde047'},
-      {key:'service',label:'Service & Partner App',color:'#60a5fa'},
-      {key:'coach',label:'Coach',color:'#e879f9'},
-      {key:'company',label:'Company',color:'#4ade80'},
-    ];
-
-    // ── Calculate total height ──
-    var sections=[
-      {title:'Node Types',rows:Math.ceil(toggleDefs.length/2),type:'toggle'},
-      {title:'Category',items:cats,type:'cat',cols:2},
-      {title:'Channel',items:chans,type:'chan',cols:1},
-      {title:'Company',items:cos.slice(0,10),type:'co',cols:2},
-    ];
-    var H=pad;
-    H+=lh; // main title
-    sections.forEach(function(s){
-      H+=lh; // section header
-      if(s.type==='toggle')H+=s.rows*lh;
-      else H+=Math.ceil(s.items.length/(s.cols))*lh+(s.items.length?4:0);
-      H+=8; // divider gap
-    });
-    H+=pad;
+    var W=480, lh=44, pad=16, fz=19, fzS=16;
+    var rows=toggleDefs.length;
+    var H=pad + lh            // title
+      + rows*lh + 12          // toggles
+      + lh                    // channel section header
+      + (chans.length+1)*lh   // channel items + "All"
+      + pad;
 
     var cv=document.createElement('canvas');cv.width=W;cv.height=H;
     var ctx=cv.getContext('2d');
@@ -293,92 +241,76 @@ function launchVR(missionCount){
     ctx.strokeStyle='#7c3aed';ctx.lineWidth=2;
     if(ctx.roundRect){ctx.roundRect(1,1,W-2,H-2,13);ctx.stroke();}else{ctx.strokeRect(1,1,W-2,H-2);}
 
-    // Header
-    ctx.fillStyle='#a78bfa';ctx.font='bold 20px system-ui';ctx.textAlign='center';
-    ctx.fillText('Filters',W/2,pad+18);
+    var hits=[], y=pad;
 
-    var hits=[];
-    var y=pad+lh;
+    // Title
+    ctx.fillStyle='#a78bfa';ctx.font='bold 21px system-ui';ctx.textAlign='center';
+    ctx.fillText('Graph Settings',W/2,y+20);
+    y+=lh;
 
-    function drawSectionHeader(title){
-      ctx.strokeStyle='#1e293b';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(12,y+2);ctx.lineTo(W-12,y+2);ctx.stroke();
-      ctx.fillStyle='#64748b';ctx.font='bold '+fzS+'px system-ui';ctx.textAlign='left';
-      ctx.fillText(title,12,y+fzS+4);
-      y+=lh;
-    }
-
-    // ── Toggles ──
-    drawSectionHeader('Node Types');
-    toggleDefs.forEach(function(td,i){
-      var col=i%2, row=Math.floor(i/2);
-      var tx=16+col*colW2, ty=y+row*lh;
-      var on=vis[td.key];
-      ctx.beginPath();ctx.arc(tx+11,ty+lh/2,8,0,Math.PI*2);
-      ctx.fillStyle=on?td.color:'#334155';ctx.fill();
-      if(!on){ctx.strokeStyle='#475569';ctx.lineWidth=1.5;ctx.stroke();}
-      ctx.fillStyle=on?td.color:'#64748b';
+    // ── Toggles ──────────────────────────────────────────────────────────
+    toggleDefs.forEach(function(td){
+      var on=!!vis[td.key];
+      // pill background
+      ctx.fillStyle=on?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.02)';
+      if(ctx.roundRect){ctx.roundRect(12,y+4,W-24,lh-8,8);ctx.fill();}else{ctx.fillRect(12,y+4,W-24,lh-8);}
+      // circle indicator
+      ctx.beginPath();ctx.arc(36,y+lh/2,10,0,Math.PI*2);
+      ctx.fillStyle=on?td.color:'#1e293b';ctx.fill();
+      ctx.strokeStyle=on?td.color:'#475569';ctx.lineWidth=2;ctx.stroke();
+      // checkmark when on
+      if(on){
+        ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(30,y+lh/2);ctx.lineTo(34,y+lh/2+4);ctx.lineTo(42,y+lh/2-4);ctx.stroke();
+      }
+      // label
+      ctx.fillStyle=on?'#f1f5f9':'#64748b';
       ctx.font=(on?'bold ':'')+fz+'px system-ui';ctx.textAlign='left';
-      ctx.fillText(td.label,tx+27,ty+lh/2+6);
-      hits.push({type:'toggle',key:td.key,x1:tx,y1:ty,x2:tx+colW2-4,y2:ty+lh});
+      ctx.fillText(td.label,56,y+lh/2+7);
+      // ON/OFF tag
+      ctx.fillStyle=on?'#4ade80':'#475569';ctx.font='bold 13px system-ui';ctx.textAlign='right';
+      ctx.fillText(on?'ON':'OFF',W-20,y+lh/2+5);
+      hits.push({type:'toggle',key:td.key,x1:12,y1:y+4,x2:W-12,y2:y+lh-4});
+      y+=lh;
     });
-    y+=Math.ceil(toggleDefs.length/2)*lh+8;
+    y+=12;
 
-    // ── Category ──
-    drawSectionHeader('Category');
-    cats.forEach(function(cat,i){
-      var col=i%2, row=Math.floor(i/2);
-      var cx=16+col*colW2, cy=y+row*lh;
-      var on=filterCat===cat;
-      ctx.beginPath();ctx.arc(cx+9,cy+lh/2,7,0,Math.PI*2);
-      ctx.fillStyle=on?'#a78bfa':'#1e293b';ctx.fill();
-      ctx.strokeStyle=on?'#a78bfa':'#334155';ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle=on?'#e2e8f0':'#94a3b8';
-      ctx.font=(on?'bold ':'')+fzS+'px system-ui';ctx.textAlign='left';
-      ctx.fillText(cat.slice(0,30),cx+23,cy+lh/2+5);
-      hits.push({type:'cat',value:cat,x1:cx,y1:cy,x2:cx+colW2-4,y2:cy+lh});
-    });
-    y+=Math.ceil(cats.length/2)*lh+8;
+    // ── Channel filter ────────────────────────────────────────────────────
+    ctx.strokeStyle='#1e293b';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(16,y+2);ctx.lineTo(W-16,y+2);ctx.stroke();
+    ctx.fillStyle='#64748b';ctx.font='bold '+fzS+'px system-ui';ctx.textAlign='left';
+    ctx.fillText('Channel Filter',16,y+fzS+4);
+    y+=lh;
 
-    // ── Channel ──
-    drawSectionHeader('Channel');
-    chans.forEach(function(ch,i){
-      var cy=y+i*lh;
+    // "All" option
+    var allOn=filterChan==='';
+    ctx.fillStyle=allOn?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.02)';
+    if(ctx.roundRect){ctx.roundRect(12,y+4,W-24,lh-8,8);ctx.fill();}else{ctx.fillRect(12,y+4,W-24,lh-8);}
+    ctx.fillStyle=allOn?'#e2e8f0':'#64748b';
+    ctx.font=(allOn?'bold ':'')+fz+'px system-ui';ctx.textAlign='left';
+    ctx.fillText('All Channels',20,y+lh/2+7);
+    if(allOn){ctx.fillStyle='#4ade80';ctx.font='bold 13px system-ui';ctx.textAlign='right';ctx.fillText('✓',W-20,y+lh/2+5);}
+    hits.push({type:'chan',value:'',x1:12,y1:y+4,x2:W-12,y2:y+lh-4});
+    y+=lh;
+
+    chans.forEach(function(ch){
       var on=filterChan===ch;
-      ctx.beginPath();ctx.arc(25,cy+lh/2,7,0,Math.PI*2);
-      ctx.fillStyle=on?'#38bdf8':'#1e293b';ctx.fill();
-      ctx.strokeStyle=on?'#38bdf8':'#334155';ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle=on?'#e2e8f0':'#94a3b8';
-      ctx.font=(on?'bold ':'')+fzS+'px system-ui';ctx.textAlign='left';
+      ctx.fillStyle=on?'rgba(56,189,248,0.12)':'rgba(255,255,255,0.02)';
+      if(ctx.roundRect){ctx.roundRect(12,y+4,W-24,lh-8,8);ctx.fill();}else{ctx.fillRect(12,y+4,W-24,lh-8);}
+      ctx.fillStyle=on?'#38bdf8':'#94a3b8';
+      ctx.font=(on?'bold ':'')+fz+'px system-ui';ctx.textAlign='left';
       var cnt=chanSet[ch]||0;
-      ctx.fillText(ch+(cnt?' ('+cnt+')':''),40,cy+lh/2+5);
-      hits.push({type:'chan',value:ch,x1:0,y1:cy,x2:W,y2:cy+lh});
+      ctx.fillText(ch+(cnt?' ('+cnt+')':''),20,y+lh/2+7);
+      if(on){ctx.fillStyle='#38bdf8';ctx.font='bold 13px system-ui';ctx.textAlign='right';ctx.fillText('✓',W-20,y+lh/2+5);}
+      hits.push({type:'chan',value:ch,x1:12,y1:y+4,x2:W-12,y2:y+lh-4});
+      y+=lh;
     });
-    y+=chans.length*lh+8;
-
-    // ── Company ──
-    drawSectionHeader('Company');
-    var topCos=cos.slice(0,10);
-    topCos.forEach(function(co,i){
-      var col=i%2, row=Math.floor(i/2);
-      var cx=16+col*colW2, cy=y+row*lh;
-      var on=filterCo===co;
-      ctx.beginPath();ctx.arc(cx+9,cy+lh/2,7,0,Math.PI*2);
-      ctx.fillStyle=on?'#4ade80':'#1e293b';ctx.fill();
-      ctx.strokeStyle=on?'#4ade80':'#334155';ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle=on?'#e2e8f0':'#94a3b8';
-      ctx.font=(on?'bold ':'')+fzS+'px system-ui';ctx.textAlign='left';
-      var coNode=allNodes.find(function(n){return n.type==='company'&&n.label===co;});
-      var cnt=coNode?coNode.count:0;
-      ctx.fillText(co.slice(0,28)+(cnt?' ('+cnt+')':''),cx+23,cy+lh/2+5);
-      hits.push({type:'co',value:co,x1:cx,y1:cy,x2:cx+colW2-4,y2:cy+lh});
-    });
-    y+=Math.ceil(topCos.length/2)*lh+pad;
+    y+=pad;
 
     var tex=new T.CanvasTexture(cv);
-    var mat=new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide});
-    var sc=0.09;
-    var mesh=new T.Mesh(new T.PlaneGeometry(W*sc,H*sc),mat);
+    var sc=0.1;
+    var mesh=new T.Mesh(new T.PlaneGeometry(W*sc,H*sc),
+      new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide}));
     mesh.userData={W:W,H:H,hits:hits,sc:sc};
     return mesh;
   }
@@ -408,10 +340,12 @@ function launchVR(missionCount){
     for(var i=0;i<hits.length;i++){
       var h=hits[i];
       if(px>=h.x1&&px<=h.x2&&py>=h.y1&&py<=h.y2){
-        if(h.type==='toggle'){vis[h.key]=vis[h.key]?0:1;}
-        else if(h.type==='cat'){filterCat=filterCat===h.value?'':h.value;}
-        else if(h.type==='chan'){filterChan=filterChan===h.value?'':h.value;}
-        else if(h.type==='co'){filterCo=filterCo===h.value?'':h.value;}
+        if(h.type==='toggle'){
+          vis[h.key]=!vis[h.key];
+          if(h.key==='service'){vis.svcopt=vis.service;vis.svcpartner=vis.service;}
+        } else if(h.type==='chan'){
+          filterChan=filterChan===h.value&&h.value!==''?'':h.value;
+        }
         refreshGraph();
         break;
       }
