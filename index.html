@@ -1410,21 +1410,28 @@ function renderTable(){
         // Support both old format (string[]) and new format ({n,c,o}[])
         var svcHtml='—';
         if(svcs.length){
+          // Color rules: optional=lightblue, partner/sfsf/aws/azure/gcp=green, technical required=darkblue
+          function svcColor(s){
+            var name=typeof s==='string'?s:s.n;
+            var cat=(typeof s==='string'?'':s.c||'').toLowerCase();
+            var opt=typeof s==='string'?false:!!s.o;
+            if(opt) return {bg:'rgba(125,211,252,0.18)',color:'#7dd3fc'}; // optional - light blue
+            if(cat.includes('partner')||cat.includes('successfactor')||cat.includes('aws')||cat.includes('amazon')||cat.includes('azure')||cat.includes('microsoft')||cat.includes('google')||cat.includes('consultation'))
+              return {bg:'rgba(74,222,128,0.15)',color:'#4ade80'}; // partner/external - green
+            return {bg:'rgba(59,130,246,0.15)',color:'#93c5fd'}; // technical required - dark blue
+          }
           var shown=svcs.slice(0,4).map(function(s){
             var name=typeof s==='string'?s:s.n;
-            var cat=typeof s==='string'?'':s.c||'';
-            var opt=typeof s==='string'?false:!!s.o;
-            var catLow=cat.toLowerCase();
-            var bg='',color='';
-            if(opt||catLow.includes('optional')){bg='rgba(125,211,252,0.15)';color='#7dd3fc';} // light blue
-            else if(catLow.includes('partner')){bg='rgba(74,222,128,0.15)';color='#4ade80';}   // green
-            var style=bg?'background:'+bg+';color:'+color+';padding:1px 5px;border-radius:4px;':'';
-            return '<span style="'+style+'font-size:.72rem">'+escHtml(name)+'</span>';
-          }).join('<span style="color:#334155"> · </span>');
-          if(svcs.length>4) shown+='<span style="color:#475569;font-size:.68rem"> +'+( svcs.length-4)+'</span>';
+            var cl=svcColor(s);
+            return '<span style="background:'+cl.bg+';color:'+cl.color+';padding:1px 6px;border-radius:99px;font-size:.7rem;white-space:nowrap">'+escHtml(name)+'</span>';
+          }).join(' ');
+          if(svcs.length>4) shown+=' <span style="color:#475569;font-size:.68rem">+'+( svcs.length-4)+'</span>';
           svcHtml=shown;
         }
-        var allSvcNames=svcs.map(function(s){return typeof s==='string'?s:s.n+' ['+( s.c||'')+']';}).join(', ');
+        var allSvcNames=svcs.map(function(s){
+          if(typeof s==='string') return s;
+          return s.n+(s.o?' (optional)':'')+(s.c&&s.c!=='Technical service'?' ['+s.c+']':'');
+        }).join(', ');
         return '<td class="td-muted" style="font-size:.72rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml((det.focusTopics||[]).join(', '))+'">'+escHtml(ft)+'</td>'
               +'<td style="font-size:.72rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(allSvcNames)+'">'+svcHtml+'</td>'
               +'<td class="td-muted" style="font-size:.72rem;white-space:nowrap">'+escHtml(ef)+'</td>';
@@ -1648,9 +1655,9 @@ var KG = (function(){
     tag:      {color:'#fbbf24', stroke:'#92400e', rBase:9},
     company:  {color:'#2dd4bf', stroke:'#0f766e', rBase:12},
     focus:    {color:'#f97316', stroke:'#9a3412', rBase:11},
-    service:    {color:'#f43f5e', stroke:'#9f1239', rBase:10},   // required services
+    service:    {color:'#93c5fd', stroke:'#1d4ed8', rBase:10},   // technical required - dark blue
     svcopt:     {color:'#7dd3fc', stroke:'#0369a1', rBase:9},    // optional - light blue
-    svcpartner: {color:'#4ade80', stroke:'#166534', rBase:9},    // partner - green
+    svcpartner: {color:'#4ade80', stroke:'#166534', rBase:9},    // partner/external - green
   };
   var STATUS_COLOR = {published:'#4ade80','in progress':'#38bdf8',draft:'#94a3b8',retired:'#f87171',
     Published:'#4ade80','In Progress':'#38bdf8',Draft:'#94a3b8',Retired:'#f87171','In Review':'#fbbf24'};
@@ -1744,8 +1751,12 @@ var KG = (function(){
         if(!svc)return;
         var svcName=typeof svc==='string'?svc:svc.n;
         var svcCat=typeof svc==='string'?'':((svc.c||'').toLowerCase());
-        var isOpt=typeof svc==='string'?false:(!!svc.o||svcCat.includes('optional'));
-        var isPartner=svcCat.includes('partner');
+        var isOpt=typeof svc==='string'?false:(!!svc.o);
+        var isPartner=svcCat.includes('partner')||svcCat.includes('successfactor')||
+                      svcCat.includes('amazon')||svcCat.includes('aws')||
+                      svcCat.includes('azure')||svcCat.includes('microsoft')||
+                      svcCat.includes('google')||svcCat.includes('consultation')||
+                      svcCat.includes('sap application');
         var ntype=isOpt?'svcopt':isPartner?'svcpartner':'service';
         if(!svcName)return;
         node('svc:'+svcName, svcName, ntype).count++;
