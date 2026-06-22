@@ -184,6 +184,8 @@ function launchVR(missionCount){
   var cf=graphInst.d3Force('charge'),lf=graphInst.d3Force('link');
   if(cf&&cf.strength)cf.strength(function(n){return n.type==='category'?-120:n.type==='mission'?-15:-80;});
   if(lf&&lf.distance)lf.distance(function(l){return l.rel==='category'?80:l.rel==='focus'?60:50;});
+  // Keep simulation always alive so tickFrame works in VR
+  graphInst.d3AlphaDecay(0.0228).d3AlphaMin(0);
 
   var renderer=graphInst.renderer();
   renderer.xr.enabled=true;
@@ -531,9 +533,11 @@ function launchVR(missionCount){
     if(frame&&!_vrAnimPaused&&graphInst){
       _vrAnimPaused=true;
       graphInst.pauseAnimation();
+      graphInst.d3AlphaMin(0);
       graphInst.d3ReheatSimulation();
     }
-    // Tick ForceGraph3D simulation manually (rAF is suspended in WebXR)
+    // Tick ForceGraph3D simulation manually (rAF suspended in WebXR)
+    // d3AlphaMin(0) ensures engineRunning stays true indefinitely
     if(graphInst&&graphInst.tickFrame) graphInst.tickFrame();
     // Animate rocket
     var sc=graphInst&&graphInst.scene&&graphInst.scene();
