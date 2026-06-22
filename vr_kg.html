@@ -154,11 +154,15 @@ function launchVR(missionCount){
   }
   function nodeSize(n){return n.type==='mission'?2:Math.min(8,2+Math.sqrt(n.count||0)*0.9);}
 
-  var fd=filteredData();
+  // Load ALL nodes once — nodeVisibility controls what's shown without losing positions
+  var allFd=filteredData();
   graphInst=ForceGraph3D({antialias:true,alpha:true})(wrap)
     .width(window.innerWidth).height(window.innerHeight)
     .backgroundColor('rgba(0,0,0,0)')
-    .graphData(fd)
+    .graphData({
+      nodes:allNodes.map(function(n){return Object.assign({},n);}),
+      links:allLinks.map(function(l){return {source:l.source,target:l.target,rel:l.rel};})
+    })
     .nodeColor(nodeColor).nodeVal(nodeSize).nodeResolution(8)
     .nodeLabel(function(n){return n.label+(n.count?' ('+n.count+')':'');})
     .nodeVisibility(function(n){
@@ -169,11 +173,6 @@ function launchVR(missionCount){
       return !!vis[typeKey(n)];
     })
     .linkVisibility(function(l){
-      var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
-      var gd=graphInst.graphData();
-      var sn=gd.nodes.find(function(n){return n.id===s;});
-      var tn=gd.nodes.find(function(n){return n.id===t;});
-      if(!sn||!tn)return false;
       return !!(vis[l.rel]||0);
     })
     .linkColor(function(l){return KG_COLORS[l.rel]||'#334155';})
@@ -324,10 +323,20 @@ function launchVR(missionCount){
 
   function refreshGraph(){
     if(graphInst){
-      var fd=filteredData();
-      graphInst.graphData(fd);
-      if(graphInst.d3ReheatSimulation) graphInst.d3ReheatSimulation();
+      // Capture current vis/filterChan in a fresh closure so ForceGraph3D sees new functions
+      var _vis=Object.assign({},vis), _chan=filterChan;
+      graphInst.nodeVisibility(function(n){
+        if(_chan&&n.type==='mission'){
+          var ch=n.channels||'';
+          if(!ch.split(',').map(function(c){return c.trim();}).includes(_chan))return false;
+        }
+        return !!_vis[typeKey(n)];
+      });
+      graphInst.linkVisibility(function(l){
+        return !!(_vis[l.rel]||0);
+      });
     }
+    // Rebuild panel texture
     if(controlPanel){
       var pos=controlPanel.position.clone(),q=controlPanel.quaternion.clone();
       var parent=controlPanel.parent;
