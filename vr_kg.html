@@ -200,8 +200,6 @@ function launchVR(missionCount){
     .then(function(s){
       renderer.xr.setSession(s);
       btn.textContent='Exit VR';
-      // Stop ForceGraph3D's own rAF/render loop; we take over with setAnimationLoop
-      if(graphInst&&graphInst.pauseAnimation) graphInst.pauseAnimation();
       s.addEventListener('end',function(){
         btn.textContent='Enter VR';
         if(graphInst&&graphInst.resumeAnimation) graphInst.resumeAnimation();
@@ -415,6 +413,9 @@ function launchVR(missionCount){
     setTimeout(function(){if(hintPanel)hintPanel.visible=false;},12000);
 
     setupControllers(s);
+    // Take over rendering from ForceGraph3D's rAF loop
+    graphInst.pauseAnimation();
+    graphInst.d3ReheatSimulation();
   }
 
   var initIv=setInterval(function(){
