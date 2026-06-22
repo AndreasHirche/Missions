@@ -565,7 +565,7 @@ function isExpiringSoon(v){
 }
 
 // ── Init ───────────────────────────────────────────────────────────────
-var CACHE_KEY='missions_cache_v5';
+var CACHE_KEY='missions_cache_v6';
 
 // Slim rows to only columns actually used — keeps localStorage size manageable
 var PORTFOLIO_COLS=['Mission ID','UCR ID','Mission Name','STATUS','Category','Author','Authoring Company',
@@ -574,7 +574,7 @@ var PORTFOLIO_COLS=['Mission ID','UCR ID','Mission Name','STATUS','Category','Au
 var UCR_COLS=['ID','Title','Mission Title','Name','Mission Name','Status','Lifecycle Status','State',
   'Category','Product Category','Solution Area','Product Area','Line of Business','Owner','Author','Created By','Submitted By',
   'Coach','Authoring Company','Company','Vendor','Expiry Date','Last Modified On',
-  'Validation Status','Content Validation Status','Validated','Tags','Published Channels'];
+  'Validation Status','Content Validation Status','Validated','Tags','Published Channels','Publication Channels'];
 
 function slimRows(rows, keepCols){
   return rows.map(function(r){
@@ -855,7 +855,7 @@ function processData(portfolio,ucr){
     var author =getF(r,'Owner','Author','Created By','Submitted By');
     var coach  =getF(r,'Coach','Coach name(s)')||(p?String(p['Coach name(s)']||'').trim():'');
     var company=getF(r,'Authoring Company','Company','Vendor');
-    var channels=getF(r,'Published Channels','publishedChannels')||'';
+    var channels=getF(r,'Published Channels','Publication Channels','publishedChannels')||'';
     var expiry =r['Expiry Date']||'';
     var modified=r['Last Modified On']||'';
 
