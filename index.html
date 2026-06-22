@@ -1937,7 +1937,9 @@ var KG = (function(){
       return true;
     });
     if(filt.cat){
-      var catId='cat:'+filt.cat, keep=new Set([catId]);
+      var catId='cat:'+filt.cat, keep=new Set();
+      // only include catId itself if category nodes are visible
+      if(vis['category']) keep.add(catId);
       allLinks.forEach(function(l){
         var s=l.source?.id||l.source, t=l.target?.id||l.target;
         if(t===catId)keep.add(s);
@@ -1946,7 +1948,12 @@ var KG = (function(){
         var s=l.source?.id||l.source, t=l.target?.id||l.target;
         if(keep.has(s))keep.add(t);
       });
-      nodes=nodes.filter(n=>keep.has(n.id));
+      // Never add back a category node if category toggle is off
+      if(!vis['category']){
+        nodes=nodes.filter(n=>keep.has(n.id)&&n.type!=='category');
+      } else {
+        nodes=nodes.filter(n=>keep.has(n.id));
+      }
     }
     var nids=new Set(nodes.map(n=>n.id));
     var links=allLinks.filter(function(l){
@@ -2228,7 +2235,10 @@ var KG = (function(){
       else{if(sim)sim.stop();render3d();}
     },
     toggleT: function(el){
-      var t=el.dataset.t; vis[t]=!vis[t]; el.classList.toggle('off',!vis[t]);
+      var t=el.dataset.t; vis[t]=!vis[t];
+      // svcopt/svcpartner mirror the service toggle
+      if(t==='service'){vis.svcopt=vis[t];vis.svcpartner=vis[t];}
+      el.classList.toggle('off',!vis[t]);
       mode==='2d'?render2d():render3d();
     },
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
