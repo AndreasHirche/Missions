@@ -178,7 +178,14 @@ function launchVR(missionCount){
     })
     .linkColor(function(l){return KG_COLORS[l.rel]||'#334155';})
     .linkOpacity(0.15).linkWidth(0.3)
-    .onNodeHover(function(n){wrap.style.cursor=n?'pointer':'default';});
+    .onNodeHover(function(n){
+      wrap.style.cursor=n?'pointer':'default';
+      if(n){
+        showHoverLabel(n,new T.Vector3(n.x||0,n.y||0,n.z||0));
+      } else {
+        removeHoverLabel();
+      }
+    });
 
   var cf=graphInst.d3Force('charge'),lf=graphInst.d3Force('link');
   if(cf&&cf.strength)cf.strength(function(n){return n.type==='category'?-120:n.type==='mission'?-15:-80;});
@@ -316,12 +323,12 @@ function launchVR(missionCount){
   }
 
   function refreshGraph(){
-    // Trigger visibility refresh — much faster than full graphData rebuild
     if(graphInst){
       graphInst.nodeVisibility(graphInst.nodeVisibility());
       graphInst.linkVisibility(graphInst.linkVisibility());
+      // Reheat simulation so nodes re-settle after visibility changes
+      if(graphInst.d3ReheatSimulation) graphInst.d3ReheatSimulation();
     }
-    // Rebuild panel texture
     if(controlPanel){
       var pos=controlPanel.position.clone(),q=controlPanel.quaternion.clone();
       var parent=controlPanel.parent;
@@ -442,6 +449,39 @@ function launchVR(missionCount){
   // ── Controllers ───────────────────────────────────────────────────────────
   var rc=new T.Raycaster();rc.far=500;
   var wp=new T.Vector3(),wq=new T.Quaternion(),rd=new T.Vector3();
+  var hoverLabel=null, hoverLabelCtrl=null;
+
+  function makeHoverLabel(text,color){
+    var W=520, H=72;
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    var ctx=cv.getContext('2d');
+    ctx.fillStyle='rgba(6,7,15,0.92)';
+    if(ctx.roundRect){ctx.roundRect(0,0,W,H,10);ctx.fill();}else{ctx.fillRect(0,0,W,H);}
+    ctx.strokeStyle=color||'#7c3aed';ctx.lineWidth=2;
+    if(ctx.roundRect){ctx.roundRect(1,1,W-2,H-2,9);ctx.stroke();}else{ctx.strokeRect(1,1,W-2,H-2);}
+    ctx.fillStyle=color||'#e2e8f0';ctx.font='bold 24px system-ui';ctx.textAlign='center';
+    ctx.fillText(text.slice(0,48),W/2,44,W-24);
+    var tex=new T.CanvasTexture(cv);
+    var mesh=new T.Mesh(new T.PlaneGeometry(W*0.05,H*0.05),
+      new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide,depthTest:false}));
+    mesh.renderOrder=999;
+    return mesh;
+  }
+
+  function showHoverLabel(node, hitPoint){
+    removeHoverLabel();
+    var color=KG_COLORS[node.type]||'#e2e8f0';
+    var text=node.label+(node.count?' ('+node.count+')':'');
+    hoverLabel=makeHoverLabel(text,color);
+    hoverLabel.position.copy(hitPoint);
+    hoverLabel.position.y+=4;
+    scene.add(hoverLabel);
+  }
+
+  function removeHoverLabel(){
+    if(hoverLabel){scene.remove(hoverLabel);hoverLabel.geometry.dispose();hoverLabel.material.dispose();hoverLabel=null;}
+  }
+
   function setupControllers(s){
     [0,1].forEach(function(i){
       var ctrl=renderer.xr.getController(i);rig.add(ctrl);
@@ -455,7 +495,7 @@ function launchVR(missionCount){
         if(exitPanel){var eh=rc.intersectObject(exitPanel,true);if(eh.length>0){renderer.xr.getSession()&&renderer.xr.getSession().end();return;}}
         if(controlPanel){
           var ch=rc.intersectObject(controlPanel,true);
-          if(ch.length>0&&ch[0].uv)handlePanelClick(controlPanel,ch[0].uv);
+          if(ch.length>0&&ch[0].uv){handlePanelClick(controlPanel,ch[0].uv);return;}
         }
       });
     });
@@ -463,6 +503,8 @@ function launchVR(missionCount){
 
   // ── Render loop ───────────────────────────────────────────────────────────
   var fwd=new T.Vector3(),rgt=new T.Vector3();
+  var _hoverRc=new T.Raycaster();_hoverRc.far=400;
+  var _lastHoverNode=null;
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
     camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();
@@ -485,8 +527,31 @@ function launchVR(missionCount){
           if(ry)rig.position.y-=ry*MOVE_SPEED*0.5;
         }
       });
+
+      // ── Hover: raycast right controller against graph nodes ──────────────
+      var rightSrc=srcs.find(function(s){return s.handedness==='right';});
+      if(rightSrc&&scene){
+        var rCtrl=renderer.xr.getController(1);
+        rCtrl.getWorldPosition(wp);rCtrl.getWorldQuaternion(wq);
+        rd.set(0,0,-1).applyQuaternion(wq);
+        _hoverRc.set(wp,rd);
+        // Collect all mesh objects in the graph scene
+        var meshes=[];
+        scene.traverse(function(obj){
+          if(obj.isMesh&&obj.__graphObjType==='node')meshes.push(obj);
+        });
+        var hits=_hoverRc.intersectObjects(meshes,false);
+        var hitNode=hits.length>0?hits[0].object.__data:null;
+        if(hitNode!==_lastHoverNode){
+          _lastHoverNode=hitNode;
+          if(hitNode){showHoverLabel(hitNode,new T.Vector3(hitNode.x||0,(hitNode.y||0)+4,hitNode.z||0));}
+          else{removeHoverLabel();}
+        }
+      }
+
       var cp=new T.Vector3();camera.getWorldPosition(cp);
       [exitPanel,hintPanel,titlePanel].forEach(function(p){if(p&&p.visible)p.lookAt(cp);});
+      if(hoverLabel)hoverLabel.lookAt(cp);
     }
     renderer.render(scene||graphInst.scene(),camera);
   });
