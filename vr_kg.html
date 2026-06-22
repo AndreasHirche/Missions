@@ -200,6 +200,18 @@ function launchVR(missionCount){
     .graphData(fd)
     .nodeColor(nodeColor).nodeVal(nodeSize).nodeResolution(8)
     .nodeLabel(function(n){return n.label+(n.count?' ('+n.count+')':'');})
+    .nodeVisibility(function(n){
+      if(filterCat&&n.type==='category'&&n.label!==filterCat)return false;
+      return !!(vis[typeKey(n)]||n.type==='category');
+    })
+    .linkVisibility(function(l){
+      var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
+      var sn=graphInst.graphData().nodes.find(function(n){return n.id===s;});
+      var tn=graphInst.graphData().nodes.find(function(n){return n.id===t;});
+      if(!sn||!tn)return false;
+      var rv=(l.rel==='category')?1:(vis[l.rel]||0);
+      return !!rv;
+    })
     .linkColor(function(l){return KG_COLORS[l.rel]||'#334155';})
     .linkOpacity(0.15).linkWidth(0.3)
     .onNodeHover(function(n){wrap.style.cursor=n?'pointer':'default';});
@@ -224,39 +236,8 @@ function launchVR(missionCount){
       renderer.xr.setSession(s);
       btn.textContent='Exit VR';
       s.addEventListener('end',function(){btn.textContent='Enter VR';});
-      // Once XR starts, position control panel in front of player
-      s.addEventListener('visibilitychange',function handler(){
-        if(s.visibilityState==='visible'){
-          s.removeEventListener('visibilitychange',handler);
-          positionPanelInFront();
-        }
-      });
-      // Fallback: position after short delay
-      setTimeout(positionPanelInFront, 500);
     });
   };
-
-  function positionPanelInFront(){
-    if(!controlPanel||!camera)return;
-    // Place panel ~1.5m in front of player, slightly left, at eye height
-    var fwd=new T.Vector3();
-    camera.getWorldDirection(fwd);
-    fwd.y=0; fwd.normalize();
-    var left=new T.Vector3(-fwd.z,0,fwd.x); // perpendicular left
-    var camPos=new T.Vector3();
-    camera.getWorldPosition(camPos);
-    var target=camPos.clone()
-      .addScaledVector(fwd,1.5)
-      .addScaledVector(left,0.4);
-    // Convert world position to rig-local
-    rig.worldToLocal(target);
-    controlPanel.position.copy(target);
-    controlPanel.position.y+=0.05;
-    // Face toward camera
-    var camWorld=new T.Vector3();
-    camera.getWorldPosition(camWorld);
-    controlPanel.lookAt(camWorld);
-  }
 
   var scene,camera,rig=new T.Group();
   rig.position.set(0,20,280);
@@ -403,8 +384,12 @@ function launchVR(missionCount){
   }
 
   function refreshGraph(){
-    var fd=filteredData();
-    if(graphInst)graphInst.graphData(fd);
+    // Trigger visibility refresh — much faster than full graphData rebuild
+    if(graphInst){
+      graphInst.nodeVisibility(graphInst.nodeVisibility());
+      graphInst.linkVisibility(graphInst.linkVisibility());
+    }
+    // Rebuild panel texture
     if(controlPanel){
       var pos=controlPanel.position.clone(),q=controlPanel.quaternion.clone();
       var parent=controlPanel.parent;
@@ -451,9 +436,10 @@ function launchVR(missionCount){
     titlePanel=makeLabelMesh('Missions KG — '+mc+' missions · '+sc2+' services',{w:580,h:60,border:'#7c3aed',scale:0.09});
     titlePanel.position.set(0,145,0);s.add(titlePanel);
 
-    // Control panel — initially straight ahead, repositioned when VR starts
+    // Control panel — left of center, rotated 20° to face player's gaze
     controlPanel=buildControlPanel();
-    controlPanel.position.set(-10,0,-50);
+    controlPanel.position.set(-40,4,-50);
+    controlPanel.rotation.y=Math.PI/9; // ~20° toward center
     rig.add(controlPanel);
 
     // Exit button — right side of rig
