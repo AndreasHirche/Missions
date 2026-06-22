@@ -29,12 +29,12 @@ canvas{display:block}
 <script src="3d-force-graph.min.js"></script>
 <script>
 var KG_COLORS={mission:'#fde047',category:'#d1d5db',coach:'#e879f9',tag:'#fbbf24',
-  company:'#166534',focus:'#f97316',service:'#60a5fa',svcopt:'#60a5fa',svcpartner:'#a3e635'};
+  company:'#4ade80',focus:'#f97316',service:'#60a5fa',svcopt:'#60a5fa',svcpartner:'#a3e635'};
 var MOVE_SPEED=1.5, TURN_SPEED=0.025, DEADZONE=0.15;
 
 // ── State ──────────────────────────────────────────────────────────────────────
-var vis={mission:1,coach:1,company:1,focus:1,service:1,tag:0};
-var filterCat='';
+var vis={mission:1,coach:1,company:1,service:1};
+var filterCat='', filterChan='', filterCo='';
 var allNodes=[], allLinks=[], graphInst=null;
 
 var UC_SERVICES={}, UC_DC_IDS={}, UC_DETAILS={};
@@ -44,14 +44,24 @@ Promise.all([
   fetch('uc_details.json').then(function(r){return r.ok?r.json():{};}).catch(function(){return {};})
 ]).then(function(results){
   UC_SERVICES=results[0]; UC_DC_IDS=results[1]; UC_DETAILS=results[2];
+  // Load missions from sessionStorage (set by opener) or window.opener
+  var stored=sessionStorage.getItem('vr_kg_missions');
+  if(stored){try{window._vrMissions=JSON.parse(stored);}catch(e){}}
+  else if(window.opener&&window.opener.allMissions){window._vrMissions=window.opener.allMissions;}
   document.getElementById('loading').innerHTML='<div class="spinner"></div><div>Building graph…</div>';
   setTimeout(buildGraph,100);
 });
 
+// ── Build graph data ───────────────────────────────────────────────────────────
 function buildGraph(){
-  var missions=(window.opener&&window.opener.allMissions)||[];
+  var missions=window._vrMissions||[];
   if(!missions.length){buildFromDetails();return;}
-  var CAT_NORM={'database and data management':'DB & Data Mgmt','application development and automation':'App Dev & Auto','digital process automation':'Digital Process Auto','data and analytics':'Data & Analytics','integration suite':'Integration Suite','inegration suite':'Integration Suite','generative ai':'Generative AI','artificial intelligence':'AI','ai core':'AI'};
+  var CAT_NORM={'database and data management':'DB & Data Mgmt',
+    'application development and automation':'App Dev & Auto',
+    'digital process automation':'Digital Process Auto',
+    'data and analytics':'Data & Analytics',
+    'integration suite':'Integration Suite','inegration suite':'Integration Suite',
+    'generative ai':'Generative AI','artificial intelligence':'AI','ai core':'AI'};
   function nc(c){return CAT_NORM[(c||'').toLowerCase()]||c;}
   function getDcId(m){
     var u=String(m['UCR ID']||'');
@@ -60,19 +70,26 @@ function buildGraph(){
     return mm?mm[1]:null;
   }
   var nodes={},links=[];
-  function node(id,label,type,extra){if(!nodes[id])nodes[id]={id:id,label:label,type:type,count:0,...(extra||{})};return nodes[id];}
+  function node(id,label,type,extra){
+    if(!nodes[id])nodes[id]=Object.assign({id:id,label:label,type:type,count:0},extra||{});
+    return nodes[id];
+  }
   missions.forEach(function(m){
     var mid='m:'+m['UCR ID'];
-    node(mid,m['Mission Name']||m['UCR ID'],'mission',{status:(m['STATUS']||'').toLowerCase(),company:(m['Authoring Company']||'').trim()});
+    var channels=String(m['Published Channels']||'').trim();
+    var company=String(m['Authoring Company']||'').trim();
+    node(mid,m['Mission Name']||m['UCR ID'],'mission',{
+      status:(m['STATUS']||'').toLowerCase(),
+      company:company,
+      channels:channels
+    });
     var cat=nc((m['Category']||'Other').trim());
     node('cat:'+cat,cat,'category').count++;
     links.push({source:mid,target:'cat:'+cat,rel:'category'});
-    var coach=(m['Coach name(s)']||'').trim();
+    var coach=String(m['Coach name(s)']||'').trim();
     if(coach){node('coach:'+coach,coach,'coach').count++;links.push({source:mid,target:'coach:'+coach,rel:'coach'});}
-    var company=(m['Authoring Company']||'').trim();
     if(company){node('co:'+company,company,'company').count++;links.push({source:mid,target:'co:'+company,rel:'company'});}
     var det=UC_DETAILS[m['UCR ID']||'']||{};
-    (det.focusTopics||[]).forEach(function(ft){if(!ft)return;node('ft:'+ft,ft,'focus').count++;links.push({source:mid,target:'ft:'+ft,rel:'focus'});});
     var dcId=getDcId(m);
     (dcId?UC_SERVICES[dcId]||[]:[]).forEach(function(s){
       var name=typeof s==='string'?s:s.n;
@@ -92,35 +109,67 @@ function buildFromDetails(){
   Object.entries(UC_DETAILS).forEach(function(e){
     var ucr=e[0],det=e[1];
     var mid='m:'+ucr;
-    if(!nodes[mid])nodes[mid]={id:mid,label:ucr,type:'mission',count:0};
-    (det.focusTopics||[]).forEach(function(ft){
-      var fid='ft:'+ft;
-      if(!nodes[fid])nodes[fid]={id:fid,label:ft,type:'focus',count:0};
-      nodes[fid].count++;links.push({source:mid,target:fid,rel:'focus'});
-    });
+    if(!nodes[mid])nodes[mid]={id:mid,label:ucr,type:'mission',count:0,channels:'',company:''};
   });
   allNodes=Object.values(nodes); allLinks=links;
   launchVR(allNodes.filter(function(n){return n.type==='mission';}).length);
 }
 
 // ── Filtered graph data ────────────────────────────────────────────────────────
+function typeKey(n){return (n.type==='svcopt'||n.type==='svcpartner')?'service':n.type;}
+
 function filteredData(){
-  var keep=allNodes.filter(function(n){
-    if(!vis[n.type]&&n.type!=='category')return false; // category always kept for layout
-    if(n.type==='category'&&filterCat&&n.label!==filterCat)return false;
+  var hasFilter=filterCat||filterChan||filterCo;
+
+  if(!hasFilter){
+    // Simple vis-only filter; always keep category nodes for layout
+    var keep=allNodes.filter(function(n){return vis[typeKey(n)]||n.type==='category';});
+    var nids=new Set(keep.map(function(n){return n.id;}));
+    var klinks=allLinks.filter(function(l){
+      var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
+      var rv=(l.rel==='category')?1:(vis[l.rel]||0);
+      return nids.has(s)&&nids.has(t)&&rv;
+    });
+    return{nodes:keep.map(function(n){return Object.assign({},n);}),links:klinks};
+  }
+
+  // With active filter: find matching missions first
+  var matchMissions=allNodes.filter(function(n){
+    if(n.type!=='mission')return false;
+    if(filterChan){
+      var ch=n.channels||'';
+      if(!ch.split(',').map(function(c){return c.trim();}).includes(filterChan))return false;
+    }
+    if(filterCo&&n.company!==filterCo)return false;
     return true;
   });
+
   if(filterCat){
-    var catId='cat:'+filterCat, kept=new Set([catId]);
-    allLinks.forEach(function(l){var s=l.source?.id||l.source,t=l.target?.id||l.target;if(t===catId)kept.add(s);});
-    allLinks.forEach(function(l){var s=l.source?.id||l.source,t=l.target?.id||l.target;if(kept.has(s))kept.add(t);});
-    keep=keep.filter(function(n){return kept.has(n.id);});
+    var catId='cat:'+filterCat;
+    var catMids=new Set();
+    allLinks.forEach(function(l){
+      var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
+      if(t===catId)catMids.add(s);
+    });
+    matchMissions=matchMissions.filter(function(n){return catMids.has(n.id);});
   }
+
+  var mids=new Set(matchMissions.map(function(n){return n.id;}));
+  var kept=new Set(mids);
+  if(filterCat)kept.add('cat:'+filterCat);
+  allLinks.forEach(function(l){
+    var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
+    if(mids.has(s))kept.add(t);
+  });
+
+  var keep=allNodes.filter(function(n){
+    return kept.has(n.id)&&(vis[typeKey(n)]||n.type==='category');
+  });
   var nids=new Set(keep.map(function(n){return n.id;}));
   var klinks=allLinks.filter(function(l){
-    var s=l.source?.id||l.source,t=l.target?.id||l.target;
-    var relVis=l.rel==='service'?vis['service']:(l.rel==='category'?1:vis[l.rel]||0);
-    return nids.has(s)&&nids.has(t)&&relVis;
+    var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
+    var rv=(l.rel==='category')?1:(vis[l.rel]||0);
+    return nids.has(s)&&nids.has(t)&&rv;
   });
   return{nodes:keep.map(function(n){return Object.assign({},n);}),links:klinks};
 }
@@ -136,7 +185,10 @@ function launchVR(missionCount){
     return;
   }
   function nodeColor(n){
-    if(n.type==='mission'){var sc={published:'#fde047','in progress':'#fef08a',draft:'#fef9c3',retired:'#94a3b8'};return sc[n.status||'']||'#fde047';}
+    if(n.type==='mission'){
+      var sc={published:'#fde047','in progress':'#fef08a',draft:'#fef9c3',retired:'#94a3b8'};
+      return sc[n.status||'']||'#fde047';
+    }
     return KG_COLORS[n.type]||'#94a3b8';
   }
   function nodeSize(n){return n.type==='mission'?2:Math.min(8,2+Math.sqrt(n.count||0)*0.9);}
@@ -173,151 +225,176 @@ function launchVR(missionCount){
 
   var scene,camera,rig=new T.Group();
   rig.position.set(0,20,280);
-  var exitPanel=null,controlPanel=null,hintPanel=null,catPanels=[],titlePanel=null;
+  var exitPanel=null,controlPanel=null,hintPanel=null,titlePanel=null;
   var rigReady=false;
 
-  // ── Canvas panel helper ───────────────────────────────────────────────────
-  function makeTextMesh(lines,opts){
-    var W=opts.w||400,lh=opts.lh||36,pad=opts.pad||14;
-    var H=opts.h||(lines.length*lh+pad*2);
-    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
-    var ctx=cv.getContext('2d');
-    ctx.fillStyle=opts.bg||'rgba(6,7,15,0.95)';
-    if(ctx.roundRect){ctx.roundRect(0,0,W,H,12);ctx.fill();}else{ctx.fillRect(0,0,W,H);}
-    ctx.strokeStyle=opts.border||'#7c3aed';ctx.lineWidth=2;
-    if(ctx.roundRect){ctx.roundRect(1,1,W-2,H-2,11);ctx.stroke();}else{ctx.strokeRect(1,1,W-2,H-2);}
-    lines.forEach(function(l,i){
-      ctx.fillStyle=l.c||'#e2e8f0';
-      ctx.font=(l.bold?'bold ':'')+((l.sz||20))+'px system-ui,sans-serif';
-      ctx.textAlign=l.align||'center';
-      ctx.fillText(l.t,l.align==='left'?16:W/2,pad+(l.sz||20)+i*lh,W-20);
-    });
-    var tex=new T.CanvasTexture(cv);
-    var mat=new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide});
-    var scale=opts.scale||0.08;
-    return new T.Mesh(new T.PlaneGeometry(W*scale,H*scale),mat);
-  }
-
-  // ── Control panel (toggles + category filter) ─────────────────────────────
+  // ── Build control panel with toggles + 3 dropdowns ───────────────────────
   function buildControlPanel(){
-    if(controlPanel){scene.remove(controlPanel);}
-    var cats=allNodes.filter(function(n){return n.type==='category';}).map(function(n){return n.label;}).sort();
-    // Toggles row
+    var W=740, lh=33, pad=12, fz=17, fzS=15;
+    var colW2=W/2, colW3=W/3;
+
+    // Collect filter data
+    var cats=allNodes.filter(function(n){return n.type==='category';})
+      .sort(function(a,b){return b.count-a.count;}).map(function(n){return n.label;});
+    var chanSet={};
+    allNodes.forEach(function(n){
+      if(n.type==='mission'&&n.channels){
+        n.channels.split(',').forEach(function(c){c=c.trim();if(c)chanSet[c]=(chanSet[c]||0)+1;});
+      }
+    });
+    var chans=Object.keys(chanSet).sort(function(a,b){return chanSet[b]-chanSet[a];});
+    var cos=allNodes.filter(function(n){return n.type==='company';})
+      .sort(function(a,b){return b.count-a.count;}).slice(0,12).map(function(n){return n.label;});
+
     var toggleDefs=[
       {key:'mission',label:'Mission',color:'#fde047'},
       {key:'coach',label:'Coach',color:'#e879f9'},
       {key:'company',label:'Company',color:'#4ade80'},
-      {key:'focus',label:'Focus',color:'#f97316'},
       {key:'service',label:'Services',color:'#60a5fa'},
-      {key:'tag',label:'Tags',color:'#fbbf24'},
     ];
-    var W=640,lh=38,pad=14;
-    var H=pad*2+lh*(2+Math.min(cats.length,8)+1); // header+toggles+cats+divider
+
+    // ── Calculate total height ──
+    var sections=[
+      {title:'Node Types',rows:Math.ceil(toggleDefs.length/2),type:'toggle'},
+      {title:'Category',items:cats,type:'cat',cols:2},
+      {title:'Channel',items:chans,type:'chan',cols:1},
+      {title:'Company',items:cos.slice(0,10),type:'co',cols:2},
+    ];
+    var H=pad;
+    H+=lh; // main title
+    sections.forEach(function(s){
+      H+=lh; // section header
+      if(s.type==='toggle')H+=s.rows*lh;
+      else H+=Math.ceil(s.items.length/(s.cols))*lh+(s.items.length?4:0);
+      H+=8; // divider gap
+    });
+    H+=pad;
+
     var cv=document.createElement('canvas');cv.width=W;cv.height=H;
     var ctx=cv.getContext('2d');
-    ctx.fillStyle='rgba(6,7,15,0.95)';
+    ctx.fillStyle='rgba(6,7,15,0.97)';
     if(ctx.roundRect){ctx.roundRect(0,0,W,H,14);ctx.fill();}else{ctx.fillRect(0,0,W,H);}
     ctx.strokeStyle='#7c3aed';ctx.lineWidth=2;
     if(ctx.roundRect){ctx.roundRect(1,1,W-2,H-2,13);ctx.stroke();}else{ctx.strokeRect(1,1,W-2,H-2);}
-    // Title
-    ctx.fillStyle='#a78bfa';ctx.font='bold 22px system-ui';ctx.textAlign='center';
-    ctx.fillText('Node Filters',W/2,pad+20);
-    // Toggles
-    var tx=20,ty=pad+lh+16,colW=W/3;
+
+    // Header
+    ctx.fillStyle='#a78bfa';ctx.font='bold 20px system-ui';ctx.textAlign='center';
+    ctx.fillText('Filters',W/2,pad+18);
+
+    var hits=[];
+    var y=pad+lh;
+
+    function drawSectionHeader(title){
+      ctx.strokeStyle='#1e293b';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(12,y+2);ctx.lineTo(W-12,y+2);ctx.stroke();
+      ctx.fillStyle='#64748b';ctx.font='bold '+fzS+'px system-ui';ctx.textAlign='left';
+      ctx.fillText(title,12,y+fzS+4);
+      y+=lh;
+    }
+
+    // ── Toggles ──
+    drawSectionHeader('Node Types');
     toggleDefs.forEach(function(td,i){
-      var col=i%3,row=Math.floor(i/3);
-      var x=tx+col*colW,y=ty+row*lh;
+      var col=i%2, row=Math.floor(i/2);
+      var tx=16+col*colW2, ty=y+row*lh;
       var on=vis[td.key];
-      // dot
-      ctx.beginPath();ctx.arc(x+12,y+10,8,0,Math.PI*2);
+      ctx.beginPath();ctx.arc(tx+11,ty+lh/2,8,0,Math.PI*2);
       ctx.fillStyle=on?td.color:'#334155';ctx.fill();
       if(!on){ctx.strokeStyle='#475569';ctx.lineWidth=1.5;ctx.stroke();}
-      // label
-      ctx.fillStyle=on?td.color:'#64748b';ctx.font=(on?'bold ':'')+' 18px system-ui';ctx.textAlign='left';
-      ctx.fillText(td.label,x+28,y+15);
+      ctx.fillStyle=on?td.color:'#64748b';
+      ctx.font=(on?'bold ':'')+fz+'px system-ui';ctx.textAlign='left';
+      ctx.fillText(td.label,tx+27,ty+lh/2+6);
+      hits.push({type:'toggle',key:td.key,x1:tx,y1:ty,x2:tx+colW2-4,y2:ty+lh});
     });
-    // Divider
-    var divY=ty+Math.ceil(toggleDefs.length/3)*lh+8;
-    ctx.strokeStyle='#1e293b';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(16,divY);ctx.lineTo(W-16,divY);ctx.stroke();
-    // Category filter label
-    ctx.fillStyle='#64748b';ctx.font='16px system-ui';ctx.textAlign='left';
-    ctx.fillText('Filter by Category:',16,divY+22);
-    // Categories
-    var cty=divY+lh;
-    cats.slice(0,8).forEach(function(cat,i){
+    y+=Math.ceil(toggleDefs.length/2)*lh+8;
+
+    // ── Category ──
+    drawSectionHeader('Category');
+    cats.forEach(function(cat,i){
+      var col=i%2, row=Math.floor(i/2);
+      var cx=16+col*colW2, cy=y+row*lh;
       var on=filterCat===cat;
-      var col=i%2,row=Math.floor(i/2);
-      var cx=20+col*(W/2),cy=cty+row*lh;
-      ctx.beginPath();ctx.arc(cx+10,cy+10,7,0,Math.PI*2);
-      ctx.fillStyle=on?'#60a5fa':'#1e293b';ctx.fill();
-      ctx.strokeStyle=on?'#60a5fa':'#334155';ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle=on?'#e2e8f0':'#94a3b8';ctx.font=(on?'bold ':'')+' 16px system-ui';ctx.textAlign='left';
-      ctx.fillText(cat.slice(0,28),cx+24,cy+14);
+      ctx.beginPath();ctx.arc(cx+9,cy+lh/2,7,0,Math.PI*2);
+      ctx.fillStyle=on?'#a78bfa':'#1e293b';ctx.fill();
+      ctx.strokeStyle=on?'#a78bfa':'#334155';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle=on?'#e2e8f0':'#94a3b8';
+      ctx.font=(on?'bold ':'')+fzS+'px system-ui';ctx.textAlign='left';
+      ctx.fillText(cat.slice(0,30),cx+23,cy+lh/2+5);
+      hits.push({type:'cat',value:cat,x1:cx,y1:cy,x2:cx+colW2-4,y2:cy+lh});
     });
-    if(filterCat){
-      var clearY=cty+Math.ceil(Math.min(cats.length,8)/2)*lh+4;
-      ctx.fillStyle='#f87171';ctx.font='bold 17px system-ui';ctx.textAlign='center';
-      ctx.fillText('✕ Clear filter',W/2,clearY+16);
-    }
+    y+=Math.ceil(cats.length/2)*lh+8;
+
+    // ── Channel ──
+    drawSectionHeader('Channel');
+    chans.forEach(function(ch,i){
+      var cy=y+i*lh;
+      var on=filterChan===ch;
+      ctx.beginPath();ctx.arc(25,cy+lh/2,7,0,Math.PI*2);
+      ctx.fillStyle=on?'#38bdf8':'#1e293b';ctx.fill();
+      ctx.strokeStyle=on?'#38bdf8':'#334155';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle=on?'#e2e8f0':'#94a3b8';
+      ctx.font=(on?'bold ':'')+fzS+'px system-ui';ctx.textAlign='left';
+      var cnt=chanSet[ch]||0;
+      ctx.fillText(ch+(cnt?' ('+cnt+')':''),40,cy+lh/2+5);
+      hits.push({type:'chan',value:ch,x1:0,y1:cy,x2:W,y2:cy+lh});
+    });
+    y+=chans.length*lh+8;
+
+    // ── Company ──
+    drawSectionHeader('Company');
+    var topCos=cos.slice(0,10);
+    topCos.forEach(function(co,i){
+      var col=i%2, row=Math.floor(i/2);
+      var cx=16+col*colW2, cy=y+row*lh;
+      var on=filterCo===co;
+      ctx.beginPath();ctx.arc(cx+9,cy+lh/2,7,0,Math.PI*2);
+      ctx.fillStyle=on?'#4ade80':'#1e293b';ctx.fill();
+      ctx.strokeStyle=on?'#4ade80':'#334155';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle=on?'#e2e8f0':'#94a3b8';
+      ctx.font=(on?'bold ':'')+fzS+'px system-ui';ctx.textAlign='left';
+      var coNode=allNodes.find(function(n){return n.type==='company'&&n.label===co;});
+      var cnt=coNode?coNode.count:0;
+      ctx.fillText(co.slice(0,28)+(cnt?' ('+cnt+')':''),cx+23,cy+lh/2+5);
+      hits.push({type:'co',value:co,x1:cx,y1:cy,x2:cx+colW2-4,y2:cy+lh});
+    });
+    y+=Math.ceil(topCos.length/2)*lh+pad;
+
     var tex=new T.CanvasTexture(cv);
     var mat=new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide});
-    var sc=0.1;
+    var sc=0.09;
     var mesh=new T.Mesh(new T.PlaneGeometry(W*sc,H*sc),mat);
-    // Store hitboxes metadata for raycasting
-    mesh.userData.isControlPanel=true;
-    mesh.userData.W=W;mesh.userData.H=H;
-    mesh.userData.toggleDefs=toggleDefs;
-    mesh.userData.cats=cats;
-    mesh.userData.ty=ty;mesh.userData.lh=lh;mesh.userData.divY=divY;
-    mesh.userData.cty=cty;mesh.userData.pad=pad;
-    mesh.userData.scale=sc;
+    mesh.userData={W:W,H:H,hits:hits,sc:sc};
     return mesh;
   }
 
   function refreshGraph(){
     var fd=filteredData();
     if(graphInst)graphInst.graphData(fd);
-    if(controlPanel&&scene){
-      var pos=controlPanel.position.clone(),rot=controlPanel.quaternion.clone();
+    if(controlPanel){
+      var pos=controlPanel.position.clone(),q=controlPanel.quaternion.clone();
       var parent=controlPanel.parent;
       if(parent)parent.remove(controlPanel);
       controlPanel=buildControlPanel();
       controlPanel.position.copy(pos);
-      controlPanel.quaternion.copy(rot);
+      controlPanel.quaternion.copy(q);
       if(parent)parent.add(controlPanel);
     }
   }
 
-  function handlePanelClick(panel, uv){
-    // uv is 0-1 texture coords, convert to pixel coords
-    var W=panel.userData.W, H=panel.userData.H, sc=panel.userData.scale;
+  function handlePanelClick(panel,uv){
+    var W=panel.userData.W, H=panel.userData.H;
     var px=uv.x*W, py=(1-uv.y)*H;
-    var ty=panel.userData.ty, lh=panel.userData.lh;
-    var divY=panel.userData.divY, cty=panel.userData.cty;
-    var toggleDefs=panel.userData.toggleDefs, cats=panel.userData.cats;
-    var colW=W/3, tx=20;
-    // Check toggle hits
-    toggleDefs.forEach(function(td,i){
-      var col=i%3,row=Math.floor(i/3);
-      var x=tx+col*colW, y=ty+row*lh;
-      if(px>x&&px<x+colW&&py>y-8&&py<y+lh){
-        vis[td.key]=vis[td.key]?0:1;
+    var hits=panel.userData.hits||[];
+    for(var i=0;i<hits.length;i++){
+      var h=hits[i];
+      if(px>=h.x1&&px<=h.x2&&py>=h.y1&&py<=h.y2){
+        if(h.type==='toggle'){vis[h.key]=vis[h.key]?0:1;}
+        else if(h.type==='cat'){filterCat=filterCat===h.value?'':h.value;}
+        else if(h.type==='chan'){filterChan=filterChan===h.value?'':h.value;}
+        else if(h.type==='co'){filterCo=filterCo===h.value?'':h.value;}
         refreshGraph();
+        break;
       }
-    });
-    // Check category hits
-    cats.slice(0,8).forEach(function(cat,i){
-      var col=i%2,row=Math.floor(i/2);
-      var cx=20+col*(W/2), cy=cty+row*lh;
-      if(px>cx&&px<cx+W/2&&py>cy-4&&py<cy+lh){
-        filterCat=filterCat===cat?'':cat;
-        refreshGraph();
-      }
-    });
-    // Clear button
-    if(filterCat){
-      var clearY=cty+Math.ceil(Math.min(cats.length,8)/2)*lh+4;
-      if(py>clearY&&py<clearY+lh){filterCat='';refreshGraph();}
     }
   }
 
@@ -333,53 +410,77 @@ function launchVR(missionCount){
     s.add(new T.Mesh(new T.SphereGeometry(2000,16,16),new T.MeshBasicMaterial({color:0x02040f,side:T.BackSide})));
     addRocket(s);
 
-    // Title panel
+    // Title panel (world-space, billboard)
     var mc=allNodes.filter(function(n){return n.type==='mission';}).length;
     var sc2=allNodes.filter(function(n){return n.type==='service'||n.type==='svcpartner'||n.type==='svcopt';}).length;
-    titlePanel=makeTextMesh([
-      {t:'Missions Knowledge Graph',c:'#a78bfa',bold:true,sz:24},
-      {t:mc+' missions · '+sc2+' services · '+allLinks.length+' links',c:'#64748b',sz:18}
-    ],{w:560,lh:36,border:'#7c3aed',scale:0.1});
+    titlePanel=makeLabelMesh('Missions KG — '+mc+' missions · '+sc2+' services',{w:580,h:60,border:'#7c3aed',scale:0.09});
     titlePanel.position.set(0,145,0);s.add(titlePanel);
 
-    // Control panel (attached to rig, always visible)
+    // Control panel — attached to rig (stays in view)
     controlPanel=buildControlPanel();
-    controlPanel.position.set(-55,5,-45); // left side
+    controlPanel.position.set(-58,4,-50);
     rig.add(controlPanel);
 
-    // Exit panel
-    exitPanel=makeTextMesh([{t:'✕  EXIT VR',c:'#f87171',bold:true,sz:24},{t:'Aim + trigger',c:'#64748b',sz:17}],{w:240,h:90,border:'#f87171',scale:0.09});
-    exitPanel.position.set(28,-6,-45);rig.add(exitPanel);
+    // Exit button — right side of rig
+    exitPanel=makeLabelMesh('✕  EXIT VR',{w:220,h:72,border:'#f87171',color:'#f87171',bold:true,sz:24,sub:'Aim + trigger',subColor:'#64748b',scale:0.085});
+    exitPanel.position.set(32,-6,-50);rig.add(exitPanel);
 
-    // Hint panel
-    hintPanel=makeTextMesh([
-      {t:'VR Controls',c:'#fde047',bold:true,sz:22},
-      {t:'Left stick → move/strafe',c:'#e2e8f0',sz:18},
-      {t:'Right stick → turn',c:'#e2e8f0',sz:18},
-      {t:'Trigger on panel → toggle/filter',c:'#86efac',sz:18},
-      {t:'Trigger on EXIT → leave VR',c:'#94a3b8',sz:16},
-    ],{w:480,lh:34,border:'#fde047',scale:0.09});
-    hintPanel.position.set(0,45,160);s.add(hintPanel);
-    setTimeout(function(){if(hintPanel)hintPanel.visible=false;},10000);
+    // Hint
+    hintPanel=makeLabelMesh('',{w:460,h:170,border:'#fde047',scale:0.085,lines:[
+      {t:'VR Controls',c:'#fde047',bold:true,sz:21},
+      {t:'Left stick → move / strafe',c:'#e2e8f0',sz:17},
+      {t:'Right stick → turn / up-down',c:'#e2e8f0',sz:17},
+      {t:'Trigger on panel → toggle/filter',c:'#86efac',sz:17},
+      {t:'Trigger EXIT → leave VR',c:'#94a3b8',sz:15},
+    ]});
+    hintPanel.position.set(0,42,160);s.add(hintPanel);
+    setTimeout(function(){if(hintPanel)hintPanel.visible=false;},12000);
 
     setupControllers(s);
   }
 
-  var initIv=setInterval(function(){if(graphInst.scene&&graphInst.scene()){initRig();clearInterval(initIv);}},200);
+  var initIv=setInterval(function(){
+    if(graphInst.scene&&graphInst.scene()){initRig();clearInterval(initIv);}
+  },200);
+
+  // ── Simple label mesh factory ─────────────────────────────────────────────
+  function makeLabelMesh(text,opts){
+    var W=opts.w||400, H=opts.h||60, sc=opts.scale||0.08;
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    var ctx=cv.getContext('2d');
+    ctx.fillStyle='rgba(6,7,15,0.95)';
+    if(ctx.roundRect){ctx.roundRect(0,0,W,H,12);ctx.fill();}else{ctx.fillRect(0,0,W,H);}
+    ctx.strokeStyle=opts.border||'#7c3aed';ctx.lineWidth=2;
+    if(ctx.roundRect){ctx.roundRect(1,1,W-2,H-2,11);ctx.stroke();}else{ctx.strokeRect(1,1,W-2,H-2);}
+    if(opts.lines){
+      var lh=opts.lh||30;
+      opts.lines.forEach(function(l,i){
+        ctx.fillStyle=l.c||'#e2e8f0';
+        ctx.font=(l.bold?'bold ':'')+((l.sz||18))+'px system-ui';
+        ctx.textAlign='center';
+        ctx.fillText(l.t,W/2,14+(l.sz||18)+(i*lh),W-20);
+      });
+    } else {
+      ctx.fillStyle=opts.color||'#e2e8f0';
+      ctx.font=(opts.bold?'bold ':'')+(opts.sz||20)+'px system-ui';
+      ctx.textAlign='center';
+      ctx.fillText(text,W/2,H/2+7);
+      if(opts.sub){ctx.fillStyle=opts.subColor||'#94a3b8';ctx.font='15px system-ui';ctx.fillText(opts.sub,W/2,H/2+22);}
+    }
+    var tex=new T.CanvasTexture(cv);
+    return new T.Mesh(new T.PlaneGeometry(W*sc,H*sc),new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide}));
+  }
 
   // ── Rocket ────────────────────────────────────────────────────────────────
   function addRocket(s){
     var M=T.MeshBasicMaterial,rk=new T.Group();
     rk.add(new T.Mesh(new T.CapsuleGeometry(2.5,9,8,16),new M({color:0xbcc8d4})));
-    var nose=new T.Mesh(new T.ConeGeometry(2.5,5,16),new M({color:0x1d4ed8}));
-    nose.position.y=9.5;rk.add(nose);
+    var nose=new T.Mesh(new T.ConeGeometry(2.5,5,16),new M({color:0x1d4ed8}));nose.position.y=9.5;rk.add(nose);
     for(var i=0;i<3;i++){var pv=new T.Group();pv.rotation.y=(i/3)*Math.PI*2;var fin=new T.Mesh(new T.BoxGeometry(1,5,3.5),new M({color:0x3b82f6}));fin.position.set(3.5,-7,0);pv.add(fin);rk.add(pv);}
     var fm=new M({color:0xf97316,transparent:true,opacity:0.9});
-    var flame=new T.Mesh(new T.ConeGeometry(1.8,5,10),fm);
-    flame.position.y=-9.5;flame.rotation.z=Math.PI;rk.add(flame);
+    var flame=new T.Mesh(new T.ConeGeometry(1.8,5,10),fm);flame.position.y=-9.5;flame.rotation.z=Math.PI;rk.add(flame);
     rk.rotation.x=-Math.PI/2;
-    var orbit=new T.Group();orbit.rotation.x=0.4;orbit.rotation.z=0.3;
-    rk.position.set(220,0,0);orbit.add(rk);s.add(orbit);
+    var orbit=new T.Group();orbit.rotation.x=0.4;orbit.rotation.z=0.3;rk.position.set(220,0,0);orbit.add(rk);s.add(orbit);
     var tick=0;(function a(){requestAnimationFrame(a);orbit.rotation.y+=0.006;fm.opacity=0.7+0.2*Math.sin(tick+=0.12);})();
   }
 
@@ -388,20 +489,18 @@ function launchVR(missionCount){
   var wp=new T.Vector3(),wq=new T.Quaternion(),rd=new T.Vector3();
   function setupControllers(s){
     [0,1].forEach(function(i){
-      var c=renderer.xr.getController(i);rig.add(c);
-      var rl=new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(0,0,0),new T.Vector3(0,0,-1)]),new T.LineBasicMaterial({color:i===0?0x60a5fa:0xf87171}));
-      rl.scale.z=60;c.add(rl);
-      c.addEventListener('selectstart',function(){
-        c.getWorldPosition(wp);c.getWorldQuaternion(wq);rd.set(0,0,-1).applyQuaternion(wq);rc.set(wp,rd);
-        // Exit panel
-        if(exitPanel){var eh=rc.intersectObject(exitPanel,true);if(eh.length>0){renderer.xr.getSession()?.end();return;}}
-        // Control panel
+      var ctrl=renderer.xr.getController(i);rig.add(ctrl);
+      var rl=new T.Line(
+        new T.BufferGeometry().setFromPoints([new T.Vector3(0,0,0),new T.Vector3(0,0,-1)]),
+        new T.LineBasicMaterial({color:i===0?0x60a5fa:0xf87171}));
+      rl.scale.z=60;ctrl.add(rl);
+      ctrl.addEventListener('selectstart',function(){
+        ctrl.getWorldPosition(wp);ctrl.getWorldQuaternion(wq);
+        rd.set(0,0,-1).applyQuaternion(wq);rc.set(wp,rd);
+        if(exitPanel){var eh=rc.intersectObject(exitPanel,true);if(eh.length>0){renderer.xr.getSession()&&renderer.xr.getSession().end();return;}}
         if(controlPanel){
           var ch=rc.intersectObject(controlPanel,true);
-          if(ch.length>0){
-            var uv=ch[0].uv;
-            if(uv)handlePanelClick(controlPanel,uv);
-          }
+          if(ch.length>0&&ch[0].uv)handlePanelClick(controlPanel,ch[0].uv);
         }
       });
     });
@@ -415,7 +514,7 @@ function launchVR(missionCount){
     rgt.crossVectors(new T.Vector3(0,1,0),fwd).negate();
     if(frame){
       var sess=renderer.xr.getSession();
-      var srcs=sess?[...sess.inputSources]:[];
+      var srcs=sess?Array.from(sess.inputSources):[];
       srcs.forEach(function(src){
         if(!src.gamepad)return;
         var axes=src.gamepad.axes;if(axes.length<4)return;
@@ -431,7 +530,6 @@ function launchVR(missionCount){
           if(ry)rig.position.y-=ry*MOVE_SPEED*0.5;
         }
       });
-      // Face panels toward camera
       var cp=new T.Vector3();camera.getWorldPosition(cp);
       [exitPanel,hintPanel,titlePanel].forEach(function(p){if(p&&p.visible)p.lookAt(cp);});
     }
