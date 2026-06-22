@@ -184,8 +184,8 @@ function launchVR(missionCount){
   var cf=graphInst.d3Force('charge'),lf=graphInst.d3Force('link');
   if(cf&&cf.strength)cf.strength(function(n){return n.type==='category'?-120:n.type==='mission'?-15:-80;});
   if(lf&&lf.distance)lf.distance(function(l){return l.rel==='category'?80:l.rel==='focus'?60:50;});
-  // Keep simulation always alive so tickFrame works in VR
-  graphInst.d3AlphaDecay(0.0228).d3AlphaMin(0);
+  // Never let the simulation auto-stop — needed for tickFrame to work in WebXR
+  graphInst.d3AlphaMin(0).cooldownTime(Infinity);
 
   var renderer=graphInst.renderer();
   renderer.xr.enabled=true;
