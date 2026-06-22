@@ -324,9 +324,8 @@ function launchVR(missionCount){
 
   function refreshGraph(){
     if(graphInst){
-      graphInst.nodeVisibility(graphInst.nodeVisibility());
-      graphInst.linkVisibility(graphInst.linkVisibility());
-      // Reheat simulation so nodes re-settle after visibility changes
+      var fd=filteredData();
+      graphInst.graphData(fd);
       if(graphInst.d3ReheatSimulation) graphInst.d3ReheatSimulation();
     }
     if(controlPanel){
@@ -443,7 +442,8 @@ function launchVR(missionCount){
     var flame=new T.Mesh(new T.ConeGeometry(1.8,5,10),fm);flame.position.y=-9.5;flame.rotation.z=Math.PI;rk.add(flame);
     rk.rotation.x=-Math.PI/2;
     var orbit=new T.Group();orbit.rotation.x=0.4;orbit.rotation.z=0.3;rk.position.set(220,0,0);orbit.add(rk);s.add(orbit);
-    var tick=0;(function a(){requestAnimationFrame(a);orbit.rotation.y+=0.006;fm.opacity=0.7+0.2*Math.sin(tick+=0.12);})();
+    // Store on scene so animation loop can drive it (requestAnimationFrame doesn't run in WebXR)
+    s._rocketOrbit=orbit;s._rocketFlame=fm;s._rocketTick=0;
   }
 
   // ── Controllers ───────────────────────────────────────────────────────────
@@ -507,6 +507,13 @@ function launchVR(missionCount){
   var _lastHoverNode=null;
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
+    // Animate rocket
+    var sc=graphInst&&graphInst.scene&&graphInst.scene();
+    if(sc&&sc._rocketOrbit){
+      sc._rocketOrbit.rotation.y+=0.006;
+      sc._rocketTick=(sc._rocketTick||0)+0.12;
+      sc._rocketFlame.opacity=0.7+0.2*Math.sin(sc._rocketTick);
+    }
     camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();
     rgt.crossVectors(new T.Vector3(0,1,0),fwd).negate();
     if(frame){
