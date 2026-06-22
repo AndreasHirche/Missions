@@ -184,8 +184,8 @@ function launchVR(missionCount){
   var cf=graphInst.d3Force('charge'),lf=graphInst.d3Force('link');
   if(cf&&cf.strength)cf.strength(function(n){return n.type==='category'?-120:n.type==='mission'?-15:-80;});
   if(lf&&lf.distance)lf.distance(function(l){return l.rel==='category'?80:l.rel==='focus'?60:50;});
-  // Never let the simulation auto-stop — needed for tickFrame to work in WebXR
-  graphInst.d3AlphaMin(0).cooldownTime(Infinity);
+  // Keep simulation permanently alive: no cooldown, no alpha stop, minimal decay
+  graphInst.d3AlphaMin(0).d3AlphaDecay(0).cooldownTime(Infinity).cooldownTicks(Infinity);
 
   var renderer=graphInst.renderer();
   renderer.xr.enabled=true;
@@ -207,6 +207,7 @@ function launchVR(missionCount){
   };
 
   var _simLayout=null;
+  var _xrWasPresenting=false;
 
   var scene,camera,rig=new T.Group();
   rig.position.set(0,20,280);
@@ -524,8 +525,15 @@ function launchVR(missionCount){
 
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
-    // tickFrame drives the d3 simulation + updates Three.js node positions.
-    // cooldownTime(Infinity)+d3AlphaMin(0) ensure engineRunning never goes false.
+    // Detect XR entry and reheat simulation
+    var isXR=renderer.xr.isPresenting;
+    if(isXR&&!_xrWasPresenting){
+      _xrWasPresenting=true;
+      // Alpha may have decayed to near-zero — reheat to make nodes move
+      if(graphInst){graphInst.d3AlphaMin(0);graphInst.cooldownTime(Infinity);graphInst.d3ReheatSimulation();}
+    }
+    if(!isXR) _xrWasPresenting=false;
+    // tickFrame drives d3 simulation + updates Three.js positions every frame
     if(graphInst&&graphInst.tickFrame) graphInst.tickFrame();
     // Animate rocket
     var sc=graphInst&&graphInst.scene&&graphInst.scene();
