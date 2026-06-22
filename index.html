@@ -1604,10 +1604,11 @@ init();
     <div id="kg-stat-cats"     style="font-size:0.68rem;padding:3px 10px;border-radius:12px;font-weight:600;background:#1a3a2a;color:#4ade80"></div>
     <div id="kg-stat-coaches"  style="font-size:0.68rem;padding:3px 10px;border-radius:12px;font-weight:600;background:#2a1a3a;color:#c084fc"></div>
     <div id="kg-stat-tags"     style="font-size:0.68rem;padding:3px 10px;border-radius:12px;font-weight:600;background:#3a2a0a;color:#fbbf24"></div>
-    <!-- 2D / 3D toggle -->
+    <!-- 2D / 3D / VR toggle -->
     <div style="margin-left:auto;display:flex;gap:4px;background:#1e293b;border-radius:8px;padding:3px">
       <button id="kg-btn-2d" onclick="KG&&KG.setMode('2d')" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:#7c3aed;color:#fff">2D</button>
       <button id="kg-btn-3d" onclick="KG&&KG.setMode('3d')" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:transparent;color:#64748b">3D</button>
+      <button onclick="openKgVR()" title="Open in VR (Meta Quest)" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:transparent;color:#64748b">🥽 VR</button>
     </div>
   </div>
   <!-- Legend + controls -->
@@ -2231,6 +2232,15 @@ var KG = (function(){
   };
 })();
 
+function openKgVR(){
+  var w=window.open('vr_kg.html','_blank');
+  // Pass allMissions to the VR page once it loads
+  if(w){
+    w.addEventListener('load',function(){
+      try{ w.allMissions=window.allMissions||[]; }catch(e){}
+    });
+  }
+}
 function openKG(){ KG.open(); }
 function closeKG(){ KG.close(); }
 function kgSetMode(m){ KG.setMode(m); }
