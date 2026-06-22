@@ -202,15 +202,11 @@ function launchVR(missionCount){
     .then(function(s){
       renderer.xr.setSession(s);
       btn.textContent='Exit VR';
-      s.addEventListener('end',function(){
-        btn.textContent='Enter VR';
-        _vrAnimPaused=false;
-        if(graphInst&&graphInst.resumeAnimation) graphInst.resumeAnimation();
-      });
+      s.addEventListener('end',function(){btn.textContent='Enter VR';});
     });
   };
 
-  var _vrAnimPaused=false;
+  var _simLayout=null;
 
   var scene,camera,rig=new T.Group();
   rig.position.set(0,20,280);
@@ -345,7 +341,7 @@ function launchVR(missionCount){
         }
       });
       // Reheat simulation so visible nodes re-settle
-      if(graphInst.d3ReheatSimulation) graphInst.d3ReheatSimulation();
+      if(graphInst&&graphInst.d3ReheatSimulation) graphInst.d3ReheatSimulation();
     }
     // Rebuild panel texture
     if(controlPanel){
@@ -418,7 +414,6 @@ function launchVR(missionCount){
     setTimeout(function(){if(hintPanel)hintPanel.visible=false;},12000);
 
     setupControllers(s);
-    // Don't touch animation here — pauseAnimation is called when XR session actually starts
   }
 
   var initIv=setInterval(function(){
@@ -529,15 +524,8 @@ function launchVR(missionCount){
 
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
-    // On first XR frame: take over from ForceGraph3D's rAF loop
-    if(frame&&!_vrAnimPaused&&graphInst){
-      _vrAnimPaused=true;
-      graphInst.pauseAnimation();
-      graphInst.d3AlphaMin(0);
-      graphInst.d3ReheatSimulation();
-    }
-    // Tick ForceGraph3D simulation manually (rAF suspended in WebXR)
-    // d3AlphaMin(0) ensures engineRunning stays true indefinitely
+    // tickFrame drives the d3 simulation + updates Three.js node positions.
+    // cooldownTime(Infinity)+d3AlphaMin(0) ensure engineRunning never goes false.
     if(graphInst&&graphInst.tickFrame) graphInst.tickFrame();
     // Animate rocket
     var sc=graphInst&&graphInst.scene&&graphInst.scene();
