@@ -417,12 +417,22 @@ var STATUS_COLORS={
 var UC_SERVICES = {};
 var _ucrIdToDcId = {};  // UCR ID -> DC mission ID, built from portfolio in processData
 
+// UCR ID -> DC App ID mapping (loaded from uc_dc_ids.json)
+var UC_DC_IDS = {};
+(function(){
+  if(location.protocol==='file:')return;
+  fetch('uc_dc_ids.json').then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(d){ UC_DC_IDS=d; console.log('UC_DC_IDS loaded:',Object.keys(d).length,'entries'); _attachServices(); }
+  }).catch(function(){});
+})();
+
 function _getDcId(m){
   var ucrId=String(m['UCR ID']||'');
-  // UCR IDs like "UC00003821" directly encode the DC mission ID
-  var fromUcr=ucrId.match(/^UC0*(\d+)$/);
-  if(fromUcr) return fromUcr[1];
+  // Use pre-built mapping from UCR API publishingInfo
+  if(UC_DC_IDS[ucrId]) return UC_DC_IDS[ucrId];
+  // Fallback: portfolio mapping
   if(_ucrIdToDcId[ucrId]) return _ucrIdToDcId[ucrId];
+  // Fallback: DC link on mission object
   var lnk=String(m['Link to Discovery Center']||'');
   var mid=lnk.match(/missiondetail\/(\d+)/);
   return mid?mid[1]:null;

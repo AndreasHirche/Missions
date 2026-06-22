@@ -115,6 +115,15 @@ def extract_details(uc):
             prod = re.sub(r'\s+under\s+SAP.*', '', line).strip()
             if prod: sap_products.append(prod)
 
+    # Extract DC App ID from publishingInfo
+    pub = uc.get("useCasePublishingInfo") or uc.get("publishingInfo") or {}
+    dc_link = pub.get("discovery_center_link") or pub.get("discoveryCenter") or ""
+    dc_app_id = ""
+    if dc_link:
+        import re as _re
+        m = _re.search(r'/missiondetail/(\d+)', dc_link)
+        if m: dc_app_id = m.group(1)
+
     return {
         "tags":       list(dict.fromkeys(tags)),
         "commTags":   list(dict.fromkeys(comm_tags)),
@@ -126,6 +135,7 @@ def extract_details(uc):
         "catL2":      list(dict.fromkeys(cat_l2)),
         "sapProducts":list(dict.fromkeys(sap_products)),
         "effort":     ext.get("mission_effort",""),
+        "dcAppId":    dc_app_id,
     }
 
 def main():
@@ -180,6 +190,13 @@ def main():
     # Final save
     with open(OUT_FILE, 'w', encoding='utf-8') as f:
         json.dump(existing, f, ensure_ascii=False, indent=2)
+
+    # Save UCR ID -> DC App ID mapping
+    dc_map = {ucr_id: info["dcAppId"] for ucr_id, info in existing.items() if info.get("dcAppId")}
+    dc_map_file = os.path.join(BASE, "uc_dc_ids.json")
+    with open(dc_map_file, 'w', encoding='utf-8') as f:
+        json.dump(dc_map, f, ensure_ascii=False, separators=(',',':'))
+    print(f"\nSaved DC ID mapping: {len(dc_map)} entries -> {dc_map_file}")
 
     # Print sample to verify fields found
     with_services = {k: v for k, v in existing.items() if v.get("services")}
