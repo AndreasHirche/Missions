@@ -1603,13 +1603,13 @@ init();
   <!-- Legend + controls -->
   <div style="display:flex;gap:8px;align-items:center;padding:5px 14px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
     <span style="font-size:0.67rem;color:#475569;font-weight:600">Show:</span>
-    <div class="kg-li on" data-t="mission"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#38bdf8"></div>Mission <span id="kg-cnt-mission" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="category"   onclick="kgToggleT(this)"><div class="kg-ld" style="background:#4ade80"></div>Category <span id="kg-cnt-category" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="coach"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#c084fc"></div>Coach <span id="kg-cnt-coach" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="mission"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fde047"></div>Mission <span id="kg-cnt-mission" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="category"   onclick="kgToggleT(this)"><div class="kg-ld" style="background:#d1d5db"></div>Category <span id="kg-cnt-category" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="coach"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#e879f9"></div>Coach <span id="kg-cnt-coach" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li on" data-t="tag"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fbbf24"></div>Tag <span id="kg-cnt-tag" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li" data-t="company"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#2dd4bf"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li" data-t="company"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#15803d"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="focus"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="service"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#93c5fd"></div>Services / Partner Apps <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="service"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#60a5fa"></div>Services / Partner Apps <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" id="kg-li-multicat" onclick="kgToggleMultiCat(this)" title="Show all categories per mission (not just the first)" style="border:1px solid #334155;margin-left:4px"><div class="kg-ld" style="background:#4ade80"></div>All Categories <span id="kg-cnt-multicat" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
@@ -1659,18 +1659,18 @@ init();
 // ── Knowledge Graph ─────────────────────────────────────────────────────────
 var KG = (function(){
   var KG_TYPE = {
-    mission:  {color:'#38bdf8', stroke:'#0284c7', rBase:7},
-    category: {color:'#4ade80', stroke:'#166534', rBase:18},
-    coach:    {color:'#c084fc', stroke:'#7e22ce', rBase:13},
-    tag:      {color:'#fbbf24', stroke:'#92400e', rBase:9},
-    company:  {color:'#2dd4bf', stroke:'#0f766e', rBase:12},
-    focus:    {color:'#f97316', stroke:'#9a3412', rBase:11},
-    service:    {color:'#93c5fd', stroke:'#1d4ed8', rBase:10},   // technical required - dark blue
-    svcopt:     {color:'#7dd3fc', stroke:'#0369a1', rBase:9},    // optional - light blue
-    svcpartner: {color:'#4ade80', stroke:'#166534', rBase:9},    // partner/external - green
+    mission:    {color:'#fde047', stroke:'#a16207', rBase:7},    // gelb
+    category:   {color:'#d1d5db', stroke:'#6b7280', rBase:18},  // hellgrau
+    coach:      {color:'#e879f9', stroke:'#a21caf', rBase:13},  // magenta
+    tag:        {color:'#fbbf24', stroke:'#92400e', rBase:9},
+    company:    {color:'#15803d', stroke:'#14532d', rBase:12},  // dunkelgrün
+    focus:      {color:'#f97316', stroke:'#9a3412', rBase:11},
+    service:    {color:'#60a5fa', stroke:'#1d4ed8', rBase:10},  // blau
+    svcopt:     {color:'#60a5fa', stroke:'#1d4ed8', rBase:9},   // blau (optional)
+    svcpartner: {color:'#86efac', stroke:'#166534', rBase:9},   // hellgrün
   };
-  var STATUS_COLOR = {published:'#4ade80','in progress':'#38bdf8',draft:'#94a3b8',retired:'#f87171',
-    Published:'#4ade80','In Progress':'#38bdf8',Draft:'#94a3b8',Retired:'#f87171','In Review':'#fbbf24'};
+  var STATUS_COLOR = {published:'#fde047','in progress':'#fef08a',draft:'#fef9c3',retired:'#fde047',
+    Published:'#fde047','In Progress':'#fef08a',Draft:'#fef9c3',Retired:'#d1d5db','In Review':'#fef08a'};
   var STATUS_HEX   = {published:0x4ade80,'in progress':0x38bdf8,draft:0x94a3b8,retired:0xf87171};
   var CAT_NORM = {
     'database and data management':'Database & Data Mgmt',
