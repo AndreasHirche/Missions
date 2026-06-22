@@ -200,13 +200,7 @@ function launchVR(missionCount){
     .then(function(s){
       renderer.xr.setSession(s);
       btn.textContent='Exit VR';
-      // Stop ForceGraph3D's own rAF loop — we drive it manually in setAnimationLoop
-      if(graphInst&&graphInst.pauseAnimation) graphInst.pauseAnimation();
-      s.addEventListener('end',function(){
-        btn.textContent='Enter VR';
-        // Restore ForceGraph3D's own loop when leaving VR
-        if(graphInst&&graphInst.resumeAnimation) graphInst.resumeAnimation();
-      });
+      s.addEventListener('end',function(){btn.textContent='Enter VR';});
     });
   };
 
@@ -523,10 +517,25 @@ function launchVR(missionCount){
   var fwd=new T.Vector3(),rgt=new T.Vector3();
   var _hoverRc=new T.Raycaster();_hoverRc.far=400;
   var _lastHoverNode=null;
+
+  // Intercept requestAnimationFrame so ForceGraph3D's _animationCycle
+  // queues into our setAnimationLoop instead of the browser's rAF (which WebXR suspends)
+  var _pendingFgCb=null;
+  var _origRAF=window.requestAnimationFrame.bind(window);
+  var _origCAF=window.cancelAnimationFrame.bind(window);
+  window.requestAnimationFrame=function(cb){
+    // If ForceGraph3D is registering its animation cycle, capture it
+    if(renderer.xr.isPresenting){_pendingFgCb=cb;return -1;}
+    return _origRAF(cb);
+  };
+  window.cancelAnimationFrame=function(id){
+    if(id===-1){_pendingFgCb=null;return;}
+    _origCAF(id);
+  };
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
-    // Tick ForceGraph3D simulation + camera controls (replaces its internal rAF loop)
-    if(graphInst&&graphInst.tickFrame) graphInst.tickFrame();
+    // Drive ForceGraph3D's animation cycle manually (rAF is suspended in WebXR)
+    if(_pendingFgCb){var cb=_pendingFgCb;_pendingFgCb=null;cb(time);}
     // Animate rocket
     var sc=graphInst&&graphInst.scene&&graphInst.scene();
     if(sc&&sc._rocketOrbit){
@@ -580,7 +589,7 @@ function launchVR(missionCount){
       [exitPanel,hintPanel,titlePanel].forEach(function(p){if(p&&p.visible)p.lookAt(cp);});
       if(hoverLabel)hoverLabel.lookAt(cp);
     }
-    renderer.render(scene||graphInst.scene(),camera);
+    // ForceGraph3D renders internally via its _animationCycle callback above
   });
   window.addEventListener('resize',function(){if(graphInst)graphInst.width(window.innerWidth).height(window.innerHeight);});
 }
