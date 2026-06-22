@@ -154,7 +154,8 @@ function launchVR(missionCount){
   }
   function nodeSize(n){return n.type==='mission'?2:Math.min(8,2+Math.sqrt(n.count||0)*0.9);}
 
-  // Load ALL nodes/links once — positions are preserved, visibility is toggled via callbacks
+  // Load ALL nodes/links once — positions never reset
+  // nodeVisibility closes over live vis/filterChan — ForceGraph3D re-evaluates every frame
   graphInst=ForceGraph3D({antialias:true,alpha:true})(wrap)
     .width(window.innerWidth).height(window.innerHeight)
     .backgroundColor('rgba(0,0,0,0)')
@@ -316,19 +317,25 @@ function launchVR(missionCount){
   }
 
   function refreshGraph(){
-    if(graphInst){
-      // New closures capture current state — ForceGraph3D re-evaluates visibility
-      // without touching node positions
-      var _v=Object.assign({},vis), _ch=filterChan;
-      graphInst
-        .nodeVisibility(function(n){
-          if(_ch&&n.type==='mission'){
+    // Directly toggle .visible on Three.js objects — avoids ForceGraph3D rebuild
+    if(graphInst&&scene){
+      scene.traverse(function(obj){
+        if(!obj.__graphObjType)return;
+        if(obj.__graphObjType==='node'){
+          var n=obj.__data;
+          if(!n)return;
+          var show=!!vis[typeKey(n)];
+          if(show&&filterChan&&n.type==='mission'){
             var ch=n.channels||'';
-            if(!ch.split(',').map(function(c){return c.trim();}).includes(_ch))return false;
+            show=ch.split(',').map(function(c){return c.trim();}).includes(filterChan);
           }
-          return !!_v[typeKey(n)];
-        })
-        .linkVisibility(function(l){return !!(_v[l.rel]||0);});
+          obj.visible=show;
+        } else if(obj.__graphObjType==='link'){
+          var l=obj.__data;
+          if(!l)return;
+          obj.visible=!!(vis[l.rel]||0);
+        }
+      });
     }
     // Rebuild panel texture
     if(controlPanel){
