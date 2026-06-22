@@ -202,10 +202,13 @@ function launchVR(missionCount){
       btn.textContent='Exit VR';
       s.addEventListener('end',function(){
         btn.textContent='Enter VR';
+        _vrAnimPaused=false;
         if(graphInst&&graphInst.resumeAnimation) graphInst.resumeAnimation();
       });
     });
   };
+
+  var _vrAnimPaused=false;
 
   var scene,camera,rig=new T.Group();
   rig.position.set(0,20,280);
@@ -413,9 +416,7 @@ function launchVR(missionCount){
     setTimeout(function(){if(hintPanel)hintPanel.visible=false;},12000);
 
     setupControllers(s);
-    // Take over rendering from ForceGraph3D's rAF loop
-    graphInst.pauseAnimation();
-    graphInst.d3ReheatSimulation();
+    // Don't touch animation here — pauseAnimation is called when XR session actually starts
   }
 
   var initIv=setInterval(function(){
@@ -526,6 +527,12 @@ function launchVR(missionCount){
 
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
+    // On first XR frame: take over from ForceGraph3D's rAF loop
+    if(frame&&!_vrAnimPaused&&graphInst){
+      _vrAnimPaused=true;
+      graphInst.pauseAnimation();
+      graphInst.d3ReheatSimulation();
+    }
     // Tick ForceGraph3D simulation manually (rAF is suspended in WebXR)
     if(graphInst&&graphInst.tickFrame) graphInst.tickFrame();
     // Animate rocket
