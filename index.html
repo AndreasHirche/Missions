@@ -839,7 +839,10 @@ function processData(portfolio,ucr){
     // UCR as source of truth (CSV fields: ID, Title, Status, Owner, Authoring Company, Last Modified On, Published Channels, Expiry Date)
     var name   =getF(r,'Title','Mission Title','Name','Mission Name');
     var status =getF(r,'Status','Lifecycle Status','State');
-    var cat    =getF(r,'Product Category','Category','Solution Area','Product Area','Line of Business')||(p?String(p['Category']||'').trim():'');
+    var cat    =getF(r,'Product Category','Category','Solution Area','Product Area','Line of Business');
+    var portfolioCat = p?String(p['Category']||'').trim():'';
+    if(!cat) cat = portfolioCat;
+    var focusCsv = getF(r,'Focus Topics','focusTopics')||'';
     var author =getF(r,'Owner','Author','Created By','Submitted By');
     var coach  =getF(r,'Coach','Coach name(s)')||(p?String(p['Coach name(s)']||'').trim():'');
     var company=getF(r,'Authoring Company','Company','Vendor');
@@ -913,6 +916,8 @@ function processData(portfolio,ucr){
       '_ucr_modified':modified,
       '_ucr_detail': UC_DETAILS[ucrId] || null,
       '_services': [],
+      '_focus_csv': focusCsv,
+      '_portfolio_cat': portfolioCat,
       '_diffs':diffs,
       '_rev_lang':revLang,
       '_rev_qual':revQual,
@@ -1309,13 +1314,13 @@ var COLS=[
   {key:'Mission Name',label:'Mission',tdClass:'td-name',sortable:true,countId:'th-mission-count'},
   {key:'Authoring Company',label:'Company',sortable:true,tdClass:'td-muted',filterCol:'company'},
   {key:'Category',label:'Category',sortable:true,filterCol:'category'},
+  {key:'_portfolio_cat',label:'Portfolio Category',sortable:true,tdClass:'td-muted'},
   {key:'_coach',label:'Coach',sortable:true,filterCol:'coach'},
   {key:'Author',label:'Author',sortable:true,tdClass:'td-muted',filterCol:'author'},
   {key:'STATUS',label:'Status',sortable:true,filterCol:'status'},
   {key:'Published Channels',label:'Channels',sortable:true,filterCol:'channels'},
   {key:'_focus_topics',label:'Focus Topics',sortable:false},
-  {key:'_services',label:'Services <span style="font-size:.6rem;font-weight:400;opacity:.6">· <span style="color:#7dd3fc">opt</span> · <span style="color:#4ade80">partner</span></span>',sortable:false},
-  {key:'_effort',label:'Effort',sortable:true},
+  {key:'_services',label:'Services / Partner Apps',sortable:false},
   {key:'UCR ID',label:'UCR',sortable:true},
   {key:'_ucr_expiry',label:'Expiry',sortable:true},
   {key:'_ucr_modified',label:'Modified',sortable:true,tdClass:'td-muted',filterCol:'month'},
@@ -1401,14 +1406,17 @@ function renderTable(){
       +'<td class="td-name">'+nameCell+'</td>'
       +'<td class="filterable" style="white-space:nowrap" onclick="filterByCell(\'company\',\''+escHtml(company)+'\')">'+companyCell(company)+'</td>'
       +'<td class="filterable" title="Filter by category" onclick="filterByCell(\'Category\',\''+escHtml(cat)+'\')">'+((cat||'<span style="color:#334155">—</span>')+(d.cat?diffDot(d.cat):''))+'</td>'
+      +'<td class="td-muted" style="font-size:.78rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(m._portfolio_cat||'')+'">'+escHtml(m._portfolio_cat||'—')+'</td>'
       +'<td class="td-muted filterable" title="Filter by coach" onclick="filterByCell(\'_coach\',\''+escHtml(coach)+'\')" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+coachCell+'</td>'
       +'<td class="td-muted filterable" title="Filter by author" onclick="filterByCell(\'Author\',\''+escHtml(author)+'\')">'+escHtml(author||'—')+(d.author?diffDot(d.author):'')+'</td>'
       +'<td class="filterable" title="Filter by status" onclick="filterByCell(\'STATUS\',\''+escHtml(String(m['STATUS']||'').trim())+'\')">'+(badgeStatus(m['STATUS']))+(d.status?diffDot(d.status):'')+'</td>'
       +'<td class="td-muted filterable" style="font-size:.72rem;white-space:nowrap" title="Filter by channel" onclick="filterByCell(\'channels\',this.dataset.val)" data-val="'+escHtml(String(m['Published Channels']||'').split(',')[0].trim())+'">'+escHtml((m['Published Channels']||'—').split(',').map(function(c){return c.trim();}).join(', '))+'</td>'
       +(function(){
+        // Focus topics: prefer CSV field, fallback to UCR detail
         var det=m._ucr_detail||{};
-        var ft=(det.focusTopics||[]).slice(0,3).join(', ')||'—';
-        var ef={'DAYS_2_4':'2-4d','APPROX_1_DAY':'~1d','MORE_THAN_4_DAYS':'>4d','UP_TO_4_HOURS':'<4h'}[det.effort||'']||'—';
+        var ftArr=(m._focus_csv||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+        if(!ftArr.length) ftArr=det.focusTopics||[];
+        var ft=ftArr.slice(0,3).join(', ')||'—';
         var svcs=(m._services||[]);
         // Support both old format (string[]) and new format ({n,c,o}[])
         var svcHtml='—';
@@ -1435,9 +1443,8 @@ function renderTable(){
           if(typeof s==='string') return s;
           return s.n+(s.o?' (optional)':'')+(s.c&&s.c!=='Technical service'?' ['+s.c+']':'');
         }).join(', ');
-        return '<td class="td-muted" style="font-size:.72rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml((det.focusTopics||[]).join(', '))+'">'+escHtml(ft)+'</td>'
-              +'<td style="font-size:.72rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(allSvcNames)+'">'+svcHtml+'</td>'
-              +'<td class="td-muted" style="font-size:.72rem;white-space:nowrap">'+escHtml(ef)+'</td>';
+        return '<td class="td-muted" style="font-size:.72rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(ftArr.join(', '))+'">'+escHtml(ft)+'</td>'
+              +'<td style="font-size:.72rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(allSvcNames)+'">'+svcHtml+'</td>';
       })()
       +'<td style="white-space:nowrap">'+ucrLink+'</td>'
       +'<td style="white-space:nowrap">'+expCell+'</td>'
@@ -1602,7 +1609,7 @@ init();
     <div class="kg-li on" data-t="tag"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fbbf24"></div>Tag <span id="kg-cnt-tag" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="company"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#2dd4bf"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="focus"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li" data-t="service"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f43f5e"></div>Services <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="service"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#93c5fd"></div>Services / Partner Apps <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" id="kg-li-multicat" onclick="kgToggleMultiCat(this)" title="Show all categories per mission (not just the first)" style="border:1px solid #334155;margin-left:4px"><div class="kg-ld" style="background:#4ade80"></div>All Categories <span id="kg-cnt-multicat" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
@@ -1677,7 +1684,7 @@ var KG = (function(){
 
   var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, labelSel;
   var graph3d=null, mode='2d';
-  var vis={mission:1,category:1,coach:1,tag:1,company:0,focus:0,service:0,svcopt:0,svcpartner:0};
+  var vis={mission:1,category:1,coach:1,tag:1,company:0,focus:0,service:1,svcopt:1,svcpartner:1};
   var multiCatMode=false;
   var filt={q:'',cat:'',chan:'',co:''};
   var built=false, selNode=null;
@@ -1782,7 +1789,7 @@ var KG = (function(){
     var tc=allNodes.filter(n=>n.type==='tag').length;
     var coc=allNodes.filter(n=>n.type==='company').length;
     var foc=allNodes.filter(n=>n.type==='focus').length;
-    var sovc=allNodes.filter(n=>n.type==='service').length;
+    var sovc=allNodes.filter(n=>n.type==='service'||n.type==='svcopt'||n.type==='svcpartner').length;
     var cm2=document.getElementById('kg-cnt-multicat');
     if(cm2)cm2.textContent=multiCatMode?'on':'';
     var coc2=document.getElementById('kg-cnt-company'); if(coc2)coc2.textContent=coc;
