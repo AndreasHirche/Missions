@@ -200,7 +200,13 @@ function launchVR(missionCount){
     .then(function(s){
       renderer.xr.setSession(s);
       btn.textContent='Exit VR';
-      s.addEventListener('end',function(){btn.textContent='Enter VR';});
+      // Stop ForceGraph3D's own rAF loop — we drive it manually in setAnimationLoop
+      if(graphInst&&graphInst.pauseAnimation) graphInst.pauseAnimation();
+      s.addEventListener('end',function(){
+        btn.textContent='Enter VR';
+        // Restore ForceGraph3D's own loop when leaving VR
+        if(graphInst&&graphInst.resumeAnimation) graphInst.resumeAnimation();
+      });
     });
   };
 
@@ -519,6 +525,8 @@ function launchVR(missionCount){
   var _lastHoverNode=null;
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
+    // Tick ForceGraph3D simulation + camera controls (replaces its internal rAF loop)
+    if(graphInst&&graphInst.tickFrame) graphInst.tickFrame();
     // Animate rocket
     var sc=graphInst&&graphInst.scene&&graphInst.scene();
     if(sc&&sc._rocketOrbit){
