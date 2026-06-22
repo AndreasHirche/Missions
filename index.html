@@ -910,6 +910,11 @@ function processData(portfolio,ucr){
       return'open';
     })():'open';
 
+    var dcId=_getDcId({
+      'UCR ID':ucrId,
+      'Link to Discovery Center':p?String(p['Link to Discovery Center']||'').trim():''
+    });
+
     return{
       'Mission Name':name,
       'UCR ID':ucrId,
@@ -917,6 +922,7 @@ function processData(portfolio,ucr){
       'Category':cat,
       'Author':author,
       'Authoring Company':company,
+      '_dcId':dcId,
       'Coach name(s)':coach,
       'Published Channels':channels,
       '_ucr':r,
@@ -1465,7 +1471,7 @@ function renderTable(){
         +(valInfo?valCell:revIcon(m._rev_qual,m['Quality Review completed (yes/no)']))+(d.validation?diffDot(d.validation):'')
       +'</td>'
       +'<td style="text-align:center">'+revIcon(m._rev_pm,m['Name PE']||m['Review by Platform Exp.'],true)+'</td>'
-      +'<td style="text-align:center"><a href="https://discovery-center.cloud.sap/search/'+encodeURIComponent(name)+'" target="_blank" rel="noopener" title="Search in Discovery Center" style="color:#22d3ee;font-size:.85rem;text-decoration:none">↗</a></td>'
+      +'<td style="text-align:center">'+(m._dcId?'<a href="https://discovery-center.cloud.sap/missiondetail/'+m._dcId+'" target="_blank" rel="noopener" title="Open in Discovery Center" style="color:#22d3ee;font-size:.85rem;text-decoration:none">↗</a>':'<span style="color:#334155" title="No DC ID">–</span>')+'</td>'
       +'</tr>';
   });
 
