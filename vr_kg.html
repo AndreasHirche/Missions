@@ -200,7 +200,12 @@ function launchVR(missionCount){
     .then(function(s){
       renderer.xr.setSession(s);
       btn.textContent='Exit VR';
-      s.addEventListener('end',function(){btn.textContent='Enter VR';});
+      // Stop ForceGraph3D's own rAF/render loop; we take over with setAnimationLoop
+      if(graphInst&&graphInst.pauseAnimation) graphInst.pauseAnimation();
+      s.addEventListener('end',function(){
+        btn.textContent='Enter VR';
+        if(graphInst&&graphInst.resumeAnimation) graphInst.resumeAnimation();
+      });
     });
   };
 
@@ -518,24 +523,10 @@ function launchVR(missionCount){
   var _hoverRc=new T.Raycaster();_hoverRc.far=400;
   var _lastHoverNode=null;
 
-  // Intercept requestAnimationFrame so ForceGraph3D's _animationCycle
-  // queues into our setAnimationLoop instead of the browser's rAF (which WebXR suspends)
-  var _pendingFgCb=null;
-  var _origRAF=window.requestAnimationFrame.bind(window);
-  var _origCAF=window.cancelAnimationFrame.bind(window);
-  window.requestAnimationFrame=function(cb){
-    // If ForceGraph3D is registering its animation cycle, capture it
-    if(renderer.xr.isPresenting){_pendingFgCb=cb;return -1;}
-    return _origRAF(cb);
-  };
-  window.cancelAnimationFrame=function(id){
-    if(id===-1){_pendingFgCb=null;return;}
-    _origCAF(id);
-  };
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
-    // Drive ForceGraph3D's animation cycle manually (rAF is suspended in WebXR)
-    if(_pendingFgCb){var cb=_pendingFgCb;_pendingFgCb=null;cb(time);}
+    // Tick ForceGraph3D simulation manually (rAF is suspended in WebXR)
+    if(graphInst&&graphInst.tickFrame) graphInst.tickFrame();
     // Animate rocket
     var sc=graphInst&&graphInst.scene&&graphInst.scene();
     if(sc&&sc._rocketOrbit){
@@ -589,7 +580,7 @@ function launchVR(missionCount){
       [exitPanel,hintPanel,titlePanel].forEach(function(p){if(p&&p.visible)p.lookAt(cp);});
       if(hoverLabel)hoverLabel.lookAt(cp);
     }
-    // ForceGraph3D renders internally via its _animationCycle callback above
+    renderer.render(scene||graphInst.scene(),camera);
   });
   window.addEventListener('resize',function(){if(graphInst)graphInst.width(window.innerWidth).height(window.innerHeight);});
 }
