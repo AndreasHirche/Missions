@@ -154,22 +154,30 @@ function launchVR(missionCount){
   }
   function nodeSize(n){return n.type==='mission'?2:Math.min(8,2+Math.sqrt(n.count||0)*0.9);}
 
-  var fd=filteredData();
+  // Load ALL nodes/links once — positions are preserved, visibility is toggled via callbacks
   graphInst=ForceGraph3D({antialias:true,alpha:true})(wrap)
     .width(window.innerWidth).height(window.innerHeight)
     .backgroundColor('rgba(0,0,0,0)')
-    .graphData(fd)
+    .graphData({
+      nodes: allNodes.map(function(n){return Object.assign({},n);}),
+      links: allLinks.map(function(l){return {source:l.source&&l.source.id||l.source,target:l.target&&l.target.id||l.target,rel:l.rel};})
+    })
     .nodeColor(nodeColor).nodeVal(nodeSize).nodeResolution(8)
     .nodeLabel(function(n){return n.label+(n.count?' ('+n.count+')':'');})
+    .nodeVisibility(function(n){
+      if(filterChan&&n.type==='mission'){
+        var ch=n.channels||'';
+        if(!ch.split(',').map(function(c){return c.trim();}).includes(filterChan))return false;
+      }
+      return !!vis[typeKey(n)];
+    })
+    .linkVisibility(function(l){return !!(vis[l.rel]||0);})
     .linkColor(function(l){return KG_COLORS[l.rel]||'#334155';})
     .linkOpacity(0.15).linkWidth(0.3)
     .onNodeHover(function(n){
       wrap.style.cursor=n?'pointer':'default';
-      if(n){
-        showHoverLabel(n,new T.Vector3(n.x||0,n.y||0,n.z||0));
-      } else {
-        removeHoverLabel();
-      }
+      if(n){showHoverLabel(n,new T.Vector3(n.x||0,n.y||0,n.z||0));}
+      else{removeHoverLabel();}
     });
 
   var cf=graphInst.d3Force('charge'),lf=graphInst.d3Force('link');
@@ -309,19 +317,18 @@ function launchVR(missionCount){
 
   function refreshGraph(){
     if(graphInst){
-      // Save current positions so nodes don't collapse to origin
-      var posMap={};
-      graphInst.graphData().nodes.forEach(function(n){
-        posMap[n.id]={x:n.x||0,y:n.y||0,z:n.z||0,vx:n.vx||0,vy:n.vy||0,vz:n.vz||0};
-      });
-      var fd=filteredData();
-      fd.nodes.forEach(function(n){
-        var p=posMap[n.id];
-        if(p){n.x=p.x;n.y=p.y;n.z=p.z;n.vx=p.vx;n.vy=p.vy;n.vz=p.vz;}
-      });
-      graphInst.graphData(fd);
-      // Gentle reheat so nodes drift to new equilibrium
-      if(graphInst.d3ReheatSimulation) graphInst.d3ReheatSimulation();
+      // New closures capture current state — ForceGraph3D re-evaluates visibility
+      // without touching node positions
+      var _v=Object.assign({},vis), _ch=filterChan;
+      graphInst
+        .nodeVisibility(function(n){
+          if(_ch&&n.type==='mission'){
+            var ch=n.channels||'';
+            if(!ch.split(',').map(function(c){return c.trim();}).includes(_ch))return false;
+          }
+          return !!_v[typeKey(n)];
+        })
+        .linkVisibility(function(l){return !!(_v[l.rel]||0);});
     }
     // Rebuild panel texture
     if(controlPanel){
