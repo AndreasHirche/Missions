@@ -1631,12 +1631,11 @@ init();
   <div style="display:flex;gap:8px;align-items:center;padding:5px 14px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
     <span style="font-size:0.67rem;color:#475569;font-weight:600">Show:</span>
     <div class="kg-li on" data-t="mission"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fde047"></div>Mission <span id="kg-cnt-mission" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="service"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#60a5fa"></div>Service &amp; Partner App <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li on" data-t="category"   onclick="kgToggleT(this)"><div class="kg-ld" style="background:#d1d5db"></div>Category <span id="kg-cnt-category" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="coach"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#e879f9"></div>Coach <span id="kg-cnt-coach" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="tag"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fbbf24"></div>Tag <span id="kg-cnt-tag" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="company"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#166534"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li" data-t="focus"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="service"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#60a5fa"></div>Services / Partner Apps <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li" data-t="coach"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#e879f9"></div>Coach <span id="kg-cnt-coach" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li" data-t="company"       onclick="kgToggleT(this)"><div class="kg-ld" style="background:#166534"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li" data-t="focus"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
     <div style="position:relative;display:inline-flex;align-items:center">
@@ -1710,7 +1709,7 @@ var KG = (function(){
 
   var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, labelSel;
   var graph3d=null, mode='2d';
-  var vis={mission:1,category:1,coach:1,tag:1,company:1,focus:0,service:1,svcopt:1,svcpartner:1};
+  var vis={mission:1,category:1,coach:0,tag:0,company:0,focus:0,service:1,svcopt:1,svcpartner:1};
   var multiCatMode=false;
   var filt={q:'',cat:'',chan:'',co:''};
   var built=false, selNode=null;
