@@ -220,8 +220,43 @@ function launchVR(missionCount){
   document.getElementById('vr-btn-wrap').appendChild(btn);
   btn.onclick=function(){
     navigator.xr&&navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor']})
-    .then(function(s){renderer.xr.setSession(s);btn.textContent='Exit VR';s.addEventListener('end',function(){btn.textContent='Enter VR';});});
+    .then(function(s){
+      renderer.xr.setSession(s);
+      btn.textContent='Exit VR';
+      s.addEventListener('end',function(){btn.textContent='Enter VR';});
+      // Once XR starts, position control panel in front of player
+      s.addEventListener('visibilitychange',function handler(){
+        if(s.visibilityState==='visible'){
+          s.removeEventListener('visibilitychange',handler);
+          positionPanelInFront();
+        }
+      });
+      // Fallback: position after short delay
+      setTimeout(positionPanelInFront, 500);
+    });
   };
+
+  function positionPanelInFront(){
+    if(!controlPanel||!camera)return;
+    // Place panel ~1.5m in front of player, slightly left, at eye height
+    var fwd=new T.Vector3();
+    camera.getWorldDirection(fwd);
+    fwd.y=0; fwd.normalize();
+    var left=new T.Vector3(-fwd.z,0,fwd.x); // perpendicular left
+    var camPos=new T.Vector3();
+    camera.getWorldPosition(camPos);
+    var target=camPos.clone()
+      .addScaledVector(fwd,1.5)
+      .addScaledVector(left,0.4);
+    // Convert world position to rig-local
+    rig.worldToLocal(target);
+    controlPanel.position.copy(target);
+    controlPanel.position.y+=0.05;
+    // Face toward camera
+    var camWorld=new T.Vector3();
+    camera.getWorldPosition(camWorld);
+    controlPanel.lookAt(camWorld);
+  }
 
   var scene,camera,rig=new T.Group();
   rig.position.set(0,20,280);
@@ -248,9 +283,9 @@ function launchVR(missionCount){
 
     var toggleDefs=[
       {key:'mission',label:'Mission',color:'#fde047'},
+      {key:'service',label:'Service & Partner App',color:'#60a5fa'},
       {key:'coach',label:'Coach',color:'#e879f9'},
       {key:'company',label:'Company',color:'#4ade80'},
-      {key:'service',label:'Services',color:'#60a5fa'},
     ];
 
     // ── Calculate total height ──
@@ -416,9 +451,9 @@ function launchVR(missionCount){
     titlePanel=makeLabelMesh('Missions KG — '+mc+' missions · '+sc2+' services',{w:580,h:60,border:'#7c3aed',scale:0.09});
     titlePanel.position.set(0,145,0);s.add(titlePanel);
 
-    // Control panel — attached to rig (stays in view)
+    // Control panel — initially straight ahead, repositioned when VR starts
     controlPanel=buildControlPanel();
-    controlPanel.position.set(-58,4,-50);
+    controlPanel.position.set(-10,0,-50);
     rig.add(controlPanel);
 
     // Exit button — right side of rig
