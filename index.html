@@ -849,10 +849,8 @@ function processData(portfolio,ucr){
     // UCR as source of truth (CSV fields: ID, Title, Status, Owner, Authoring Company, Last Modified On, Published Channels, Expiry Date)
     var name   =getF(r,'Title','Mission Title','Name','Mission Name');
     var status =getF(r,'Status','Lifecycle Status','State');
-    var cat    =getF(r,'Category');
+    var cat    =getF(r,'Product Category','Category','Solution Area','Product Area','Line of Business');
     var portfolioCat = p?String(p['Category']||'').trim():'';
-    if(!cat) cat = getF(r,'Solution Area','Product Area','Product Category','Line of Business');
-    if(!cat) cat = portfolioCat;
     var focusCsv = getF(r,'Focus Topics','focusTopics')||'';
     var author =getF(r,'Owner','Author','Created By','Submitted By');
     var coach  =getF(r,'Coach','Coach name(s)')||(p?String(p['Coach name(s)']||'').trim():'');
@@ -996,9 +994,12 @@ function buildAuthorFilter(){
 }
 
 // ── Category filter ────────────────────────────────────────────────────
+function catParts(m){
+  return String(m['Category']||'').split(',').map(function(c){return c.trim();}).filter(Boolean);
+}
 function buildCategoryFilter(){
   var cats={};
-  allMissions.forEach(function(m){var c=String(m['Category']||'').trim();if(c)cats[c]=(cats[c]||0)+1;});
+  allMissions.forEach(function(m){catParts(m).forEach(function(c){cats[c]=(cats[c]||0)+1;});});
   var sorted=Object.keys(cats).sort();
   var sel=document.getElementById('fCategory');
   sorted.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c+' ('+cats[c]+')';sel.appendChild(o);});
@@ -1104,9 +1105,13 @@ function renderCharts(){
     }
   });
 
-  // Category bar (top 12)
+  // Category bar (top 12) — split multi-value
   var catCounts={};
-  allMissions.forEach(function(m){var c=String(m['Category']||'').trim()||'(none)';catCounts[c]=(catCounts[c]||0)+1;});
+  allMissions.forEach(function(m){
+    var parts=catParts(m);
+    if(!parts.length)parts=['(none)'];
+    parts.forEach(function(c){catCounts[c]=(catCounts[c]||0)+1;});
+  });
   var catSorted=Object.entries(catCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,12);
 
   destroyChart('categoryChart'); if(categoryChart)categoryChart.destroy();
@@ -1279,7 +1284,7 @@ function applyFilters(){
 
   filtered=allMissions.filter(function(m){
     if(st&&String(m['STATUS']||'').trim()!==st)return false;
-    if(cat&&String(m['Category']||'').trim()!==cat)return false;
+    if(cat&&!catParts(m).includes(cat))return false;
     if(fCompany&&String(m['Authoring Company']||'').trim()!==fCompany)return false;
     if(fAuthor&&String(m['Author']||'').trim()!==fAuthor)return false;
     if(fChannels){
@@ -1415,14 +1420,18 @@ function renderTable(){
       +'</a>'
       :'';
 
-    var cat=String(m['Category']||'').trim();
+    var catArr=catParts(m);
+    var catCell=catArr.length
+      ?catArr.map(function(c){return '<span class="filterable" title="Filter by category" onclick="filterByCell(\'Category\',\''+escHtml(c)+'\')" style="display:inline-block;margin-right:2px">'+escHtml(c)+'</span>';}).join('<span style="color:#334155">, </span>')
+      :'<span style="color:#334155">—</span>';
+    catCell+=(d.cat?diffDot(d.cat):'');
     var author=String(m['Author']||'').trim();
     var company=String(m['Authoring Company']||'').trim();
 
     html+='<tr>'
       +'<td class="td-name">'+nameCell+'</td>'
       +'<td class="filterable" style="white-space:nowrap" onclick="filterByCell(\'company\',\''+escHtml(company)+'\')">'+companyCell(company)+'</td>'
-      +'<td class="filterable" title="Filter by category" onclick="filterByCell(\'Category\',\''+escHtml(cat)+'\')">'+((cat||'<span style="color:#334155">—</span>')+(d.cat?diffDot(d.cat):''))+'</td>'
+      +'<td title="Filter by category">'+catCell+'</td>'
       +'<td class="td-muted" style="font-size:.78rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(m._portfolio_cat||'')+'">'+escHtml(m._portfolio_cat||'—')+'</td>'
       +'<td class="td-muted filterable" title="Filter by coach" onclick="filterByCell(\'_coach\',\''+escHtml(coach)+'\')" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+coachCell+'</td>'
       +'<td class="td-muted filterable" title="Filter by author" onclick="filterByCell(\'Author\',\''+escHtml(author)+'\')">'+escHtml(author||'—')+(d.author?diffDot(d.author):'')+'</td>'
@@ -1539,7 +1548,7 @@ function openColFilter(col, btn, event){
   }else if(col==='category'){
     curVal=document.getElementById('fCategory').value;
     var seen={};
-    allMissions.forEach(function(m){var c=String(m['Category']||'').trim();if(c&&!seen[c]){seen[c]=true;options.push({val:c,label:c});}});
+    allMissions.forEach(function(m){catParts(m).forEach(function(c){if(c&&!seen[c]){seen[c]=true;options.push({val:c,label:c});}});});
     options.sort(function(a,b){return a.label.localeCompare(b.label);});
     options.unshift({val:'',label:'(All)'});
   }else if(col==='month'){
