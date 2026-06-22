@@ -852,6 +852,7 @@ function processData(portfolio,ucr){
     var cat    =getF(r,'Category');
     var portfolioCat = p?String(p['Category']||'').trim():'';
     if(!cat) cat = getF(r,'Solution Area','Product Area','Product Category','Line of Business');
+    if(!cat) cat = portfolioCat;
     var focusCsv = getF(r,'Focus Topics','focusTopics')||'';
     var author =getF(r,'Owner','Author','Created By','Submitted By');
     var coach  =getF(r,'Coach','Coach name(s)')||(p?String(p['Coach name(s)']||'').trim():'');
