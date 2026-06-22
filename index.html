@@ -39,7 +39,8 @@ html{scrollbar-width:thin;scrollbar-color:#7c3aed rgba(255,255,255,0.05)}
 #top-panel.compact .kpi-val{font-size:1rem!important}
 #top-panel.compact .kpi-lbl{font-size:0.5rem!important}
 #top-panel.compact .chart-inner{height:80px!important}
-#top-panel.compact .cat-coach-col .chart-inner{height:100px!important}
+#top-panel.compact .cat-coach-col .chart-card{flex:1;min-height:0;display:flex;flex-direction:column}
+#top-panel.compact .cat-coach-col .chart-inner{flex:1!important;height:auto!important;min-height:40px}
 #top-panel.compact .chart-title{margin-bottom:4px;font-size:0.62rem}
 #top-panel.compact header{padding-top:6px;margin-bottom:6px}
 #top-panel.compact header h1{font-size:1.1rem}
@@ -72,15 +73,16 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 .header-search input:focus{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.05)}
 .result-count{font-size:0.75rem;color:var(--muted);white-space:nowrap}
 
-/* Dashboard grid — all 3 cols same explicit height */
-:root{--tiles-h:420px;--tiles-compact-h:200px}
-.dashboard-main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;align-items:start}
+/* Dashboard grid — all 3 cols same height via stretch */
+:root{--tiles-compact-h:200px}
+.dashboard-main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;align-items:stretch}
 @media(max-width:900px){.dashboard-main{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.dashboard-main{grid-template-columns:1fr}}
-/* All cols same height */
-.cat-coach-col,.kg-tile,.img-status-col{height:var(--tiles-h);overflow:hidden}
-.kg-tile{display:flex;flex-direction:column;align-self:auto;max-height:var(--tiles-h);overflow:hidden}
-/* Compact */
+/* cat-coach-col determines row height; kg and img-status stretch to match */
+.cat-coach-col{overflow:hidden}
+.kg-tile{display:flex;flex-direction:column;overflow:hidden}
+.img-status-col{overflow:hidden}
+/* Compact — fixed height for all tiles */
 #top-panel.compact .cat-coach-col,
 #top-panel.compact .kg-tile,
 #top-panel.compact .img-status-col{height:var(--tiles-compact-h);max-height:var(--tiles-compact-h)}
@@ -644,6 +646,25 @@ async function fetchAndCache(showIndicator){
     }
   }catch(e){
     if(showIndicator){
+      // Try baked fallback before showing error
+      try{
+        var br=await fetch('missions_baked.json');
+        if(br.ok){
+          var baked=await br.json();
+          if(baked.missions&&baked.missions.length){
+            allMissions=baked.missions;
+            allMissions.forEach(function(m){
+              var dcId=m._dcId;
+              if(dcId&&UC_SERVICES[dcId]&&!m._services.length) m._services=UC_SERVICES[dcId];
+            });
+            filtered=allMissions.slice();
+            renderFileSources({ucr:'missions_baked.json (pre-built)'});
+            buildCategoryFilter();buildMonthFilter();buildStatusFilter();buildCompanyFilter();buildAuthorFilter();buildChannelsFilter();
+            renderKPIs();renderCharts();applyFilters();
+            return;
+          }
+        }
+      }catch(eb){}
       console.error('init fetch failed',e);
       document.getElementById('tableArea').innerHTML='<div class="loading"><div class="err">😬 Failed to load data: '+escHtml(String(e))+'</div><div style="margin-top:8px;font-size:.75rem;color:#475569">Try the ↺ buttons above to load files manually.</div></div>';
     }
@@ -962,13 +983,6 @@ function processData(portfolio,ucr){
   applyFilters();
   // Attach services now that missions are built and UCR->DC map is ready
   _attachServices();
-  // Set --tiles-h from cat+coach col height after charts render
-  setTimeout(function(){
-    var col=document.querySelector('.cat-coach-col');
-    if(col&&col.offsetHeight>50){
-      document.documentElement.style.setProperty('--tiles-h',col.offsetHeight+'px');
-    }
-  },500);
   setTimeout(function(){if(window.measureTopFn)window.measureTopFn();},300);
 }
 
