@@ -419,6 +419,9 @@ var _ucrIdToDcId = {};  // UCR ID -> DC mission ID, built from portfolio in proc
 
 function _getDcId(m){
   var ucrId=String(m['UCR ID']||'');
+  // UCR IDs like "UC00003821" directly encode the DC mission ID
+  var fromUcr=ucrId.match(/^UC0*(\d+)$/);
+  if(fromUcr) return fromUcr[1];
   if(_ucrIdToDcId[ucrId]) return _ucrIdToDcId[ucrId];
   var lnk=String(m['Link to Discovery Center']||'');
   var mid=lnk.match(/missiondetail\/(\d+)/);
