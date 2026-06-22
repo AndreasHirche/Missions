@@ -336,6 +336,8 @@ function launchVR(missionCount){
           obj.visible=!!(vis[l.rel]||0);
         }
       });
+      // Reheat simulation so visible nodes re-settle
+      if(graphInst.d3ReheatSimulation) graphInst.d3ReheatSimulation();
     }
     // Rebuild panel texture
     if(controlPanel){
