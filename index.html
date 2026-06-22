@@ -1621,7 +1621,6 @@ init();
     <div class="kg-li on" data-t="company"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#166534"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="focus"        onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li on" data-t="service"      onclick="kgToggleT(this)"><div class="kg-ld" style="background:#60a5fa"></div>Services / Partner Apps <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li" id="kg-li-multicat" onclick="kgToggleMultiCat(this)" title="Show all categories per mission (not just the first)" style="border:1px solid #334155;margin-left:4px"><div class="kg-ld" style="background:#4ade80"></div>All Categories <span id="kg-cnt-multicat" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
     <div style="position:relative;display:inline-flex;align-items:center">
@@ -2233,11 +2232,13 @@ var KG = (function(){
 })();
 
 function openKgVR(){
+  // Store missions in sessionStorage so VR page can access cross-origin
+  try{sessionStorage.setItem('vr_kg_missions',JSON.stringify(window.allMissions||[]));}catch(e){}
   var w=window.open('vr_kg.html','_blank');
-  // Pass allMissions to the VR page once it loads
   if(w){
     w.addEventListener('load',function(){
-      try{ w.allMissions=window.allMissions||[]; }catch(e){}
+      try{w.allMissions=window.allMissions||[];}catch(e){}
+      try{w._vrMissions=window.allMissions||[];}catch(e){}
     });
   }
 }
