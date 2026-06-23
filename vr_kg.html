@@ -186,14 +186,6 @@ function launchVR(missionCount){
   if(lf&&lf.distance)lf.distance(function(l){return l.rel==='category'?80:l.rel==='focus'?60:50;});
   graphInst.d3AlphaMin(0).d3AlphaDecay(0).cooldownTime(Infinity).cooldownTicks(Infinity);
 
-  // setInterval is NOT suspended by WebXR (unlike requestAnimationFrame).
-  // Call tickFrame every 16ms to drive the simulation in full VR mode.
-  setInterval(function(){
-    if(renderer.xr.isPresenting&&graphInst&&graphInst.tickFrame){
-      graphInst.tickFrame();
-    }
-  },16);
-
   var renderer=graphInst.renderer();
   renderer.xr.enabled=true;
   var T=window.THREE;
