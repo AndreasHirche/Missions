@@ -184,7 +184,6 @@ function launchVR(missionCount){
   var cf=graphInst.d3Force('charge'),lf=graphInst.d3Force('link');
   if(cf&&cf.strength)cf.strength(function(n){return n.type==='category'?-120:n.type==='mission'?-15:-80;});
   if(lf&&lf.distance)lf.distance(function(l){return l.rel==='category'?80:l.rel==='focus'?60:50;});
-  // Keep simulation permanently alive: no cooldown, no alpha stop, minimal decay
   graphInst.d3AlphaMin(0).d3AlphaDecay(0).cooldownTime(Infinity).cooldownTicks(Infinity);
 
   var renderer=graphInst.renderer();
@@ -525,16 +524,36 @@ function launchVR(missionCount){
 
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
-    // Detect XR entry and reheat simulation
     var isXR=renderer.xr.isPresenting;
     if(isXR&&!_xrWasPresenting){
       _xrWasPresenting=true;
-      // Alpha may have decayed to near-zero — reheat to make nodes move
-      if(graphInst){graphInst.d3AlphaMin(0);graphInst.cooldownTime(Infinity);graphInst.d3ReheatSimulation();}
+      if(graphInst){
+        graphInst.d3AlphaMin(0);
+        graphInst.cooldownTime(Infinity);
+        graphInst.cooldownTicks(Infinity);
+        graphInst.d3ReheatSimulation();
+      }
     }
     if(!isXR) _xrWasPresenting=false;
-    // tickFrame drives d3 simulation + updates Three.js positions every frame
-    if(graphInst&&graphInst.tickFrame) graphInst.tickFrame();
+    // In XR: d3 simulation is NOT ticking (rAF suspended on Quest).
+    // Force it by calling the underlying d3 layout tick directly.
+    if(isXR&&graphInst){
+      try{
+        // Access internal d3ForceLayout via the public d3Force getter trick:
+        // calling d3Force with a name returns the force from t.d3ForceLayout.force(name)
+        // but t.d3ForceLayout itself is the simulation — we can get it via:
+        var anyForce=graphInst.d3Force('link');
+        // anyForce.simulation is set by d3 when initialize() is called
+        var sim=anyForce&&anyForce.simulation?anyForce.simulation():null;
+        if(sim&&sim.alpha){sim.alpha(Math.max(sim.alpha(),0.1));sim.tick();}
+        // Sync Three.js positions from d3 nodes
+        var nodes=graphInst.graphData().nodes;
+        nodes.forEach(function(n){
+          var obj=n.__threeObj;
+          if(obj&&n.x!==undefined){obj.position.set(n.x,n.y||0,n.z||0);}
+        });
+      }catch(e){}
+    }
     // Animate rocket
     var sc=graphInst&&graphInst.scene&&graphInst.scene();
     if(sc&&sc._rocketOrbit){
