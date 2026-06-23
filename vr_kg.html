@@ -185,6 +185,16 @@ function launchVR(missionCount){
   if(cf&&cf.strength)cf.strength(function(n){return n.type==='category'?-120:n.type==='mission'?-15:-80;});
   if(lf&&lf.distance)lf.distance(function(l){return l.rel==='category'?80:l.rel==='focus'?60:50;});
   graphInst.d3AlphaMin(0).d3AlphaDecay(0).cooldownTime(Infinity).cooldownTicks(Infinity);
+  // Capture the d3 simulation via onEngineTick — called on every simulation tick
+  var _d3sim=null;
+  graphInst.onEngineTick(function(){
+    if(!_d3sim){
+      // d3ForceLayout is the simulation; reach it via a custom force's initialize
+      var capForce=function(){};
+      capForce.initialize=function(nodes,sim){_d3sim=sim;};
+      graphInst.d3Force('__cap__',capForce);
+    }
+  });
 
   var renderer=graphInst.renderer();
   renderer.xr.enabled=true;
@@ -535,22 +545,15 @@ function launchVR(missionCount){
       }
     }
     if(!isXR) _xrWasPresenting=false;
-    // In XR: d3 simulation is NOT ticking (rAF suspended on Quest).
-    // Force it by calling the underlying d3 layout tick directly.
-    if(isXR&&graphInst){
+    // In XR: rAF is suspended on Quest, so d3 simulation doesn't tick.
+    // Drive it directly via the captured simulation reference.
+    if(isXR&&_d3sim){
       try{
-        // Access internal d3ForceLayout via the public d3Force getter trick:
-        // calling d3Force with a name returns the force from t.d3ForceLayout.force(name)
-        // but t.d3ForceLayout itself is the simulation — we can get it via:
-        var anyForce=graphInst.d3Force('link');
-        // anyForce.simulation is set by d3 when initialize() is called
-        var sim=anyForce&&anyForce.simulation?anyForce.simulation():null;
-        if(sim&&sim.alpha){sim.alpha(Math.max(sim.alpha(),0.1));sim.tick();}
-        // Sync Three.js positions from d3 nodes
-        var nodes=graphInst.graphData().nodes;
-        nodes.forEach(function(n){
-          var obj=n.__threeObj;
-          if(obj&&n.x!==undefined){obj.position.set(n.x,n.y||0,n.z||0);}
+        _d3sim.alpha(Math.max(_d3sim.alpha(),0.05));
+        _d3sim.tick();
+        // Sync Three.js node positions from d3 data
+        graphInst.graphData().nodes.forEach(function(n){
+          if(n.__threeObj&&n.x!==undefined) n.__threeObj.position.set(n.x,n.y||0,n.z||0);
         });
       }catch(e){}
     }
@@ -582,20 +585,31 @@ function launchVR(missionCount){
         }
       });
 
-      // ── Hover: raycast right controller against graph nodes ──────────────
+      // ── Hover: raycast right controller against visible graph nodes ──────────
       var rightSrc=srcs.find(function(s){return s.handedness==='right';});
       if(rightSrc&&scene){
         var rCtrl=renderer.xr.getController(1);
         rCtrl.getWorldPosition(wp);rCtrl.getWorldQuaternion(wq);
         rd.set(0,0,-1).applyQuaternion(wq);
         _hoverRc.set(wp,rd);
-        // Collect all mesh objects in the graph scene
         var meshes=[];
-        scene.traverse(function(obj){
-          if(obj.isMesh&&obj.__graphObjType==='node')meshes.push(obj);
+        graphInst.graphData().nodes.forEach(function(n){
+          if(n.__threeObj&&n.__threeObj.visible)meshes.push(n.__threeObj);
         });
-        var hits=_hoverRc.intersectObjects(meshes,false);
-        var hitNode=hits.length>0?hits[0].object.__data:null;
+        var hits=_hoverRc.intersectObjects(meshes,true);
+        var hitObj=hits.length>0?hits[0].object:null;
+        // Walk up to find the node object with __data
+        var hitNode=null;
+        if(hitObj){
+          var o=hitObj;
+          while(o){if(o.__data){hitNode=o.__data;break;}o=o.parent;}
+          if(!hitNode){
+            // match via threeObj reference
+            graphInst.graphData().nodes.forEach(function(n){
+              if(n.__threeObj===hitObj||n.__threeObj===hitObj.parent)hitNode=n;
+            });
+          }
+        }
         if(hitNode!==_lastHoverNode){
           _lastHoverNode=hitNode;
           if(hitNode){showHoverLabel(hitNode,new T.Vector3(hitNode.x||0,(hitNode.y||0)+4,hitNode.z||0));}
