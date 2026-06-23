@@ -538,6 +538,11 @@ function launchVR(missionCount){
       if(graphInst) graphInst.d3ReheatSimulation();
     }
     if(!isXR) _xrWasPresenting=false;
+    // Call _animationCycle directly — does tickFrame + renderObjs.tick + rAF (rAF fails on Quest, harmless)
+    // This is the same thing ForceGraph3D's own loop does, just driven by our XR loop
+    if(isXR&&graphInst&&graphInst._animationCycle){
+      try{ graphInst._animationCycle(); }catch(e){}
+    }
     // Animate rocket
     var sc=graphInst&&graphInst.scene&&graphInst.scene();
     if(sc&&sc._rocketOrbit){
