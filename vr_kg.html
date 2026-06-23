@@ -185,16 +185,14 @@ function launchVR(missionCount){
   if(cf&&cf.strength)cf.strength(function(n){return n.type==='category'?-120:n.type==='mission'?-15:-80;});
   if(lf&&lf.distance)lf.distance(function(l){return l.rel==='category'?80:l.rel==='focus'?60:50;});
   graphInst.d3AlphaMin(0).d3AlphaDecay(0).cooldownTime(Infinity).cooldownTicks(Infinity);
-  // Capture the d3 simulation via onEngineTick — called on every simulation tick
-  var _d3sim=null;
-  graphInst.onEngineTick(function(){
-    if(!_d3sim){
-      // d3ForceLayout is the simulation; reach it via a custom force's initialize
-      var capForce=function(){};
-      capForce.initialize=function(nodes,sim){_d3sim=sim;};
-      graphInst.d3Force('__cap__',capForce);
+
+  // setInterval is NOT suspended by WebXR (unlike requestAnimationFrame).
+  // Call tickFrame every 16ms to drive the simulation in full VR mode.
+  setInterval(function(){
+    if(renderer.xr.isPresenting&&graphInst&&graphInst.tickFrame){
+      graphInst.tickFrame();
     }
-  });
+  },16);
 
   var renderer=graphInst.renderer();
   renderer.xr.enabled=true;
@@ -537,26 +535,9 @@ function launchVR(missionCount){
     var isXR=renderer.xr.isPresenting;
     if(isXR&&!_xrWasPresenting){
       _xrWasPresenting=true;
-      if(graphInst){
-        graphInst.d3AlphaMin(0);
-        graphInst.cooldownTime(Infinity);
-        graphInst.cooldownTicks(Infinity);
-        graphInst.d3ReheatSimulation();
-      }
+      if(graphInst) graphInst.d3ReheatSimulation();
     }
     if(!isXR) _xrWasPresenting=false;
-    // In XR: rAF is suspended on Quest, so d3 simulation doesn't tick.
-    // Drive it directly via the captured simulation reference.
-    if(isXR&&_d3sim){
-      try{
-        _d3sim.alpha(Math.max(_d3sim.alpha(),0.05));
-        _d3sim.tick();
-        // Sync Three.js node positions from d3 data
-        graphInst.graphData().nodes.forEach(function(n){
-          if(n.__threeObj&&n.x!==undefined) n.__threeObj.position.set(n.x,n.y||0,n.z||0);
-        });
-      }catch(e){}
-    }
     // Animate rocket
     var sc=graphInst&&graphInst.scene&&graphInst.scene();
     if(sc&&sc._rocketOrbit){
