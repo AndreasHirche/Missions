@@ -1638,6 +1638,10 @@ init();
   <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
     <button onclick="closeKG()" style="display:flex;align-items:center;gap:5px;padding:5px 12px;background:rgba(124,58,237,0.2);border:1px solid #7c3aed;border-radius:8px;color:#c4b5fd;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer" onmouseover="this.style.background='rgba(124,58,237,0.4)'" onmouseout="this.style.background='rgba(124,58,237,0.2)'">← Back</button>
     <div style="font-size:0.92rem;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Knowledge Graph</div>
+    <div style="position:relative;display:inline-flex;align-items:center;margin-left:4px">
+      <span style="position:absolute;left:8px;color:#475569;font-size:0.8rem;pointer-events:none">⌕</span>
+      <input id="kgSearch" type="text" placeholder="Search…" oninput="kgOnSearch()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px 4px 26px;color:#e2e8f0;font-size:0.76rem;width:160px;outline:none;font-family:'Inter',sans-serif">
+    </div>
     <!-- 2D / 3D / VR toggle -->
     <div style="margin-left:auto;display:flex;gap:4px;background:#1e293b;border-radius:8px;padding:3px">
       <button id="kg-btn-2d" onclick="KG&&KG.setMode('2d')" style="padding:4px 12px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;background:#7c3aed;color:#fff">2D</button>
@@ -1652,9 +1656,7 @@ init();
     <div class="kg-li on" data-t="service"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#60a5fa"></div>Service &amp; Partner <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="coach"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#e879f9"></div>Coach <span id="kg-cnt-coach" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="focus"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
-    <!-- Categories multi-select -->
     <div style="position:relative;display:inline-flex;align-items:center" id="kgCatWrap">
       <button id="kgCatBtn" onclick="kgToggleCatPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
         <div id="kgCatDot" style="width:9px;height:9px;border-radius:50%;background:#d1d5db;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation();kgCatVisClick()" title="Toggle category nodes on/off"></div>
@@ -1697,16 +1699,13 @@ init();
         </div>
       </div>
     </div>
-    <div style="position:relative;display:inline-flex;align-items:center">
-      <span style="position:absolute;left:8px;color:#475569;font-size:0.8rem;pointer-events:none">⌕</span>
-      <input id="kgSearch" type="text" placeholder="Search…" oninput="kgOnSearch()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px 4px 26px;color:#e2e8f0;font-size:0.76rem;width:170px;outline:none;font-family:'Inter',sans-serif">
-    </div>
     <select id="kgChanFilter" onchange="kgApplyF()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 8px;color:#e2e8f0;font-size:0.74rem;outline:none;font-family:'Inter',sans-serif">
       <option value="">All Channels</option>
       <option value="Discovery Center">Discovery Center</option>
       <option value="Content Discovery">Content Discovery</option>
       <option value="SAP.COM">SAP.COM</option>
     </select>
+    <div class="kg-li" onclick="kgToggleAll()" title="Toggle all node types" style="color:#475569;border:1px solid #334155">All</div>
     <div class="kg-li" onclick="kgZoomFit()" style="color:#7c3aed">⟳ Reset</div>
     <span id="kg-edge-count" style="font-size:0.67rem;color:#334155;margin-left:4px"></span>
   </div>
