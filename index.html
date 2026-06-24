@@ -1659,6 +1659,7 @@ init();
     <div class="kg-li" data-t="company"       onclick="kgToggleT(this)"><div class="kg-ld" style="background:#166534"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="focus"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
+    <div id="kg-hide-btp" class="kg-li" onclick="kgToggleBTP(this)" title="Hide Business Technology Platform category" style="border:1px solid #334155;margin-left:2px"><div class="kg-ld" style="background:#d1d5db"></div>hide BTP</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
     <!-- Status multi-select -->
     <div style="position:relative;display:inline-flex;align-items:center" id="kgStatusWrap">
@@ -1730,7 +1731,7 @@ var KG = (function(){
     focus:      {color:'#f97316', stroke:'#9a3412', rBase:11},
     service:    {color:'#60a5fa', stroke:'#1d4ed8', rBase:10},  // blau
     svcopt:     {color:'#93c5fd', stroke:'#3b82f6', rBase:9},   // hellblau
-    svcpartner: {color:'#2dd4bf', stroke:'#0d9488', rBase:9},   // türkis
+    svcpartner: {color:'#38bdf8', stroke:'#0284c7', rBase:9},   // türkis-blau
   };
   var STATUS_COLOR = {
     published:'#fde047', Published:'#fde047',
@@ -1748,7 +1749,7 @@ var KG = (function(){
   var graph3d=null, mode='2d';
   var vis={mission:1,category:1,coach:0,tag:0,company:0,focus:0,service:1,svcopt:1,svcpartner:1};
   var multiCatMode=true;
-  var filt={q:'',cat:'',chan:'',co:'',statuses:[]};
+  var filt={q:'',cat:'',chan:'',co:'',statuses:[],hideBTP:false};
   var built=false, selNode=null;
 
   function normCat(c){ return CAT_NORM[(c||'').toLowerCase()]||c; }
@@ -1962,6 +1963,8 @@ var KG = (function(){
         var ns=n.status||'';
         if(!filt.statuses.some(function(s){return s.toLowerCase()===ns.toLowerCase();})) return false;
       }
+      // Hide BTP category node
+      if(filt.hideBTP&&n.type==='category'&&n.label==='Business Technology Platform') return false;
       return true;
     });
     if(filt.cat){
@@ -2272,7 +2275,7 @@ var KG = (function(){
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
     catFilter: function(c){ filt.cat=c; mode==='2d'?render2d():render3d(); },
     chanFilter: function(ch){ filt.chan=ch; mode==='2d'?render2d():render3d(); },
-    setFilter: function(f){ if(f.cat!==undefined)filt.cat=f.cat; if(f.chan!==undefined)filt.chan=f.chan; if(f.co!==undefined)filt.co=f.co; if(f.statuses!==undefined)filt.statuses=f.statuses; mode==='2d'?render2d():render3d(); },
+    setFilter: function(f){ if(f.cat!==undefined)filt.cat=f.cat; if(f.chan!==undefined)filt.chan=f.chan; if(f.co!==undefined)filt.co=f.co; if(f.statuses!==undefined)filt.statuses=f.statuses; if(f.hideBTP!==undefined)filt.hideBTP=f.hideBTP; mode==='2d'?render2d():render3d(); },
     zoomFit: function(){ if(mode==='2d')zoomFit2d(); else if(graph3d)graph3d.zoomToFit(400); },
     focusNode: function(id){
       var n=(window._kgNd||[]).find(x=>x.id===id); if(!n)return;
@@ -2325,6 +2328,10 @@ function kgToggleAll(){
 function kgToggleMultiCat(el){
   var on=el.classList.toggle('on');
   KG.setMultiCat(on);
+}
+function kgToggleBTP(el){
+  var active=el.classList.toggle('on'); // on = BTP hidden
+  KG.setFilter({hideBTP:active});
 }
 function kgToggleT(el){ KG.toggleT(el); }
 function kgOnSearch(){ KG.search(document.getElementById('kgSearch').value.toLowerCase().trim()); }
