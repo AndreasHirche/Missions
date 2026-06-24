@@ -567,7 +567,7 @@ function isExpiringSoon(v){
 }
 
 // ── Init ───────────────────────────────────────────────────────────────
-var CACHE_KEY='missions_cache_v6';
+var CACHE_KEY='missions_cache_v7';
 
 // Slim rows to only columns actually used — keeps localStorage size manageable
 var PORTFOLIO_COLS=['Mission ID','UCR ID','Mission Name','STATUS','Category','Author','Authoring Company',
@@ -1722,8 +1722,8 @@ var KG = (function(){
     svcopt:     {color:'#60a5fa', stroke:'#1d4ed8', rBase:9},   // blau (optional)
     svcpartner: {color:'#a3e635', stroke:'#3f6212', rBase:9},   // gelbgrün
   };
-  var STATUS_COLOR = {published:'#fde047','in progress':'#fef08a',draft:'#fef9c3',retired:'#d4cfa8',
-    Published:'#fde047','In Progress':'#fef08a',Draft:'#fef9c3',Retired:'#d4cfa8','In Review':'#fef08a',Archived:'#d4cfa8'};
+  var STATUS_COLOR = {published:'#fde047','in progress':'#fef08a',draft:'#fef9c3',retired:'#c8c4b0',
+    Published:'#fde047','In Progress':'#fef08a',Draft:'#fef9c3',Retired:'#c8c4b0','In Review':'#fef08a',Archived:'#c8c4b0'};
   var STATUS_HEX   = {published:0x4ade80,'in progress':0x38bdf8,draft:0x94a3b8,retired:0xf87171};
   var CAT_NORM = {
     'database and data management':'Database & Data Mgmt',
