@@ -2062,17 +2062,21 @@ var KG = (function(){
 
   function onHover2d(ev,d){
     var nb=nbrs(d.id);
-    nodeSel.attr('opacity',n=>n.id===d.id||nb.has(n.id)?1:0.1);
+    circSel&&circSel.attr('opacity',n=>n.id===d.id||nb.has(n.id)?1:0.1);
+    rectSel&&rectSel.attr('opacity',n=>n.id===d.id||nb.has(n.id)?1:0.1);
     linkSel.attr('stroke-opacity',l=>{var a=l.source?.id||l.source,b=l.target?.id||l.target;return a===d.id||b===d.id?0.9:0.02;});
     showTT(ev.offsetX,ev.offsetY,d);
   }
   function onOut2d(){
     document.getElementById('kgTT').style.display='none';
-    nodeSel&&nodeSel.attr('opacity',1); linkSel&&linkSel.attr('stroke-opacity',0.18);
+    circSel&&circSel.attr('opacity',1);
+    rectSel&&rectSel.attr('opacity',1);
+    linkSel&&linkSel.attr('stroke-opacity',0.18);
   }
   function onClick2d(ev,d){
     ev.stopPropagation(); selNode=d;
-    nodeSel.attr('stroke-width',n=>n.id===d.id?3:1);
+    circSel&&circSel.attr('stroke-width',n=>n.id===d.id?3:1);
+    rectSel&&rectSel.attr('stroke-width',n=>n.id===d.id?3:1);
     openDP(d);
   }
 
