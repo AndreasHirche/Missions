@@ -1638,9 +1638,9 @@ init();
   <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
     <button onclick="closeKG()" style="display:flex;align-items:center;gap:5px;padding:5px 12px;background:rgba(124,58,237,0.2);border:1px solid #7c3aed;border-radius:8px;color:#c4b5fd;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer" onmouseover="this.style.background='rgba(124,58,237,0.4)'" onmouseout="this.style.background='rgba(124,58,237,0.2)'">← Back</button>
     <div style="font-size:0.92rem;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Knowledge Graph</div>
-    <div style="position:relative;display:inline-flex;align-items:center;margin-left:4px">
+    <div style="position:relative;display:inline-flex;align-items:center;flex:1;min-width:80px;margin-left:4px">
       <span style="position:absolute;left:8px;color:#475569;font-size:0.8rem;pointer-events:none">⌕</span>
-      <input id="kgSearch" type="text" placeholder="Search…" oninput="kgOnSearch()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px 4px 26px;color:#e2e8f0;font-size:0.76rem;width:160px;outline:none;font-family:'Inter',sans-serif">
+      <input id="kgSearch" type="text" placeholder="Search…" oninput="kgOnSearch()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px 4px 26px;color:#e2e8f0;font-size:0.76rem;width:100%;outline:none;font-family:'Inter',sans-serif">
     </div>
     <!-- 2D / 3D / VR toggle -->
     <div style="margin-left:auto;display:flex;gap:4px;background:#1e293b;border-radius:8px;padding:3px">
