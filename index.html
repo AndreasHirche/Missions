@@ -1702,10 +1702,12 @@ init();
 
 <style>
 .kg-tile:hover{border-color:rgba(124,58,237,0.6)!important;box-shadow:0 0 20px rgba(124,58,237,0.2)}
-.kg-li{display:flex;align-items:center;gap:5px;font-size:0.7rem;color:#94a3b8;cursor:pointer;padding:2px 7px;border-radius:6px;transition:background .15s;user-select:none;font-family:'Inter',sans-serif}
+.kg-li{display:flex;align-items:center;gap:5px;font-size:0.7rem;color:#94a3b8;cursor:pointer;padding:2px 7px;border-radius:6px;transition:background .15s,opacity .15s;user-select:none;font-family:'Inter',sans-serif}
 .kg-li:hover{background:#1e293b}
-.kg-li.off{opacity:0.3}
+.kg-li.on{color:#e2e8f0}
+.kg-li:not(.on)[data-t]{opacity:0.35}
 .kg-ld{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.kg-li:not(.on)[data-t] .kg-ld{filter:grayscale(1);opacity:0.5}
 </style>
 
 <script>
@@ -2255,7 +2257,7 @@ var KG = (function(){
       var t=el.dataset.t; vis[t]=!vis[t];
       // svcopt/svcpartner mirror the service toggle
       if(t==='service'){vis.svcopt=vis[t];vis.svcpartner=vis[t];}
-      el.classList.toggle('off',!vis[t]);
+      el.classList.toggle('on',!!vis[t]);
       mode==='2d'?render2d():render3d();
     },
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
@@ -2303,10 +2305,10 @@ function closeKG(){ KG.close(); }
 function kgSetMode(m){ KG.setMode(m); }
 function kgToggleAll(){
   var els=document.querySelectorAll('.kg-li[data-t]');
-  var anyOff=[...els].some(e=>e.classList.contains('off'));
+  var anyOff=[...els].some(e=>!e.classList.contains('on'));
   els.forEach(function(e){
-    if(anyOff){e.classList.remove('off');e.classList.add('on');}
-    else{e.classList.add('off');e.classList.remove('on');}
+    if(anyOff){e.classList.add('on');}
+    else{e.classList.remove('on');}
     KG.toggleT&&KG._setVis(e.dataset.t,anyOff);
   });
   if(anyOff)KG.rebuild(); else KG.rebuild();
