@@ -1768,7 +1768,7 @@ var KG = (function(){
     'ai core':'AI',
   };
 
-  var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, labelSel;
+  var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, circSel, rectSel, labelSel;
   var graph3d=null, mode='2d';
   var vis={mission:1,category:1,coach:0,tag:0,company:1,focus:0,service:1,svcopt:1,svcpartner:1};
   var multiCatMode=true;
@@ -2000,7 +2000,11 @@ var KG = (function(){
       .attr('stroke',d=>KG_TYPE[d.rel]?.color||'#334155')
       .attr('stroke-opacity',0.18).attr('stroke-width',0.6);
 
-    nodeSel=root.append('g').selectAll('circle').data(fd.nodes,d=>d.id).join('circle')
+    var isSvc=d=>d.type==='service'||d.type==='svcopt'||d.type==='svcpartner';
+    var svcNodes=fd.nodes.filter(isSvc), otherNodes=fd.nodes.filter(n=>!isSvc(n));
+
+    // Non-service nodes: circles
+    var circSel=root.append('g').selectAll('circle').data(otherNodes,d=>d.id).join('circle')
       .attr('r',nodeR)
       .attr('fill',d=>d.type==='mission'?(STATUS_COLOR[d.status]||'#38bdf8'):KG_TYPE[d.type].color)
       .attr('stroke',d=>KG_TYPE[d.type]?.stroke||'#334155')
@@ -2010,6 +2014,20 @@ var KG = (function(){
         .on('start',(e,d)=>{if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;})
         .on('drag', (e,d)=>{d.fx=e.x;d.fy=e.y;})
         .on('end',  (e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
+
+    // Service nodes: squares (rect)
+    var rectSel=root.append('g').selectAll('rect').data(svcNodes,d=>d.id).join('rect')
+      .attr('width',d=>nodeR(d)*2).attr('height',d=>nodeR(d)*2)
+      .attr('fill',d=>KG_TYPE[d.type]?.color||'#60a5fa')
+      .attr('stroke',d=>KG_TYPE[d.type]?.stroke||'#1d4ed8')
+      .attr('stroke-width',1).attr('rx',1).attr('cursor','pointer')
+      .on('mouseover',onHover2d).on('mouseout',onOut2d).on('click',onClick2d)
+      .call(d3.drag()
+        .on('start',(e,d)=>{if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;})
+        .on('drag', (e,d)=>{d.fx=e.x;d.fy=e.y;})
+        .on('end',  (e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
+
+    nodeSel=circSel; // keep reference for compatibility
 
     labelSel=root.append('g').selectAll('text').data(fd.nodes.filter(n=>n.type!=='mission'),d=>d.id).join('text')
       .text(d=>d.label.length>26?d.label.slice(0,24)+'…':d.label)
@@ -2037,7 +2055,8 @@ var KG = (function(){
 
   function tick2d(){
     linkSel.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
-    nodeSel.attr('cx',d=>d.x).attr('cy',d=>d.y);
+    circSel.attr('cx',d=>d.x).attr('cy',d=>d.y);
+    rectSel.attr('x',d=>d.x-nodeR(d)).attr('y',d=>d.y-nodeR(d));
     labelSel.attr('x',d=>d.x).attr('y',d=>d.y);
   }
 
@@ -2129,6 +2148,19 @@ var KG = (function(){
       .nodeVal(n=>n.type==='mission'?3:Math.max(4,nodeR(n)*0.9))
       .nodeLabel(n=>n.label+(n.status?' · '+n.status:'')+(n.count?' ('+n.count+')':''))
       .nodeResolution(8)
+      .nodeThreeObject(function(n){
+        var isSvc=n.type==='service'||n.type==='svcopt'||n.type==='svcpartner';
+        if(!isSvc)return null; // use default sphere
+        var T=window.THREE; if(!T)return null;
+        var s=Math.max(2,nodeR(n)*0.9)*0.8;
+        var col=KG_TYPE[n.type]?.color||'#60a5fa';
+        var mesh=new T.Mesh(
+          new T.BoxGeometry(s,s,s),
+          new T.MeshLambertMaterial({color:col,transparent:true,opacity:0.9})
+        );
+        return mesh;
+      })
+      .nodeThreeObjectExtend(false)
       .linkColor(l=>KG_TYPE[l.rel]?.color||'#334155')
       .linkOpacity(0.2)
       .linkWidth(0.3)
