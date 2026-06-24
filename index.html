@@ -2000,11 +2000,11 @@ var KG = (function(){
       .attr('stroke',d=>KG_TYPE[d.rel]?.color||'#334155')
       .attr('stroke-opacity',0.18).attr('stroke-width',0.6);
 
-    var isSvc=d=>d.type==='service'||d.type==='svcopt'||d.type==='svcpartner';
-    var svcNodes=fd.nodes.filter(isSvc), otherNodes=fd.nodes.filter(n=>!isSvc(n));
+    var isSvc=function(d){return d.type==='service'||d.type==='svcopt'||d.type==='svcpartner';};
+    var svcNodes=fd.nodes.filter(isSvc), otherNodes=fd.nodes.filter(function(n){return !isSvc(n);});
 
     // Non-service nodes: circles
-    var circSel=root.append('g').selectAll('circle').data(otherNodes,d=>d.id).join('circle')
+    circSel=root.append('g').selectAll('circle').data(otherNodes,d=>d.id).join('circle')
       .attr('r',nodeR)
       .attr('fill',d=>d.type==='mission'?(STATUS_COLOR[d.status]||'#38bdf8'):KG_TYPE[d.type].color)
       .attr('stroke',d=>KG_TYPE[d.type]?.stroke||'#334155')
@@ -2016,7 +2016,7 @@ var KG = (function(){
         .on('end',  (e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
 
     // Service nodes: squares (rect)
-    var rectSel=root.append('g').selectAll('rect').data(svcNodes,d=>d.id).join('rect')
+    rectSel=root.append('g').selectAll('rect').data(svcNodes,d=>d.id).join('rect')
       .attr('width',d=>nodeR(d)*2).attr('height',d=>nodeR(d)*2)
       .attr('fill',d=>KG_TYPE[d.type]?.color||'#60a5fa')
       .attr('stroke',d=>KG_TYPE[d.type]?.stroke||'#1d4ed8')
@@ -2027,7 +2027,7 @@ var KG = (function(){
         .on('drag', (e,d)=>{d.fx=e.x;d.fy=e.y;})
         .on('end',  (e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
 
-    nodeSel=circSel; // keep reference for compatibility
+    nodeSel=circSel;
 
     labelSel=root.append('g').selectAll('text').data(fd.nodes.filter(n=>n.type!=='mission'),d=>d.id).join('text')
       .text(d=>d.label.length>26?d.label.slice(0,24)+'…':d.label)
