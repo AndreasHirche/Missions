@@ -567,7 +567,7 @@ function isExpiringSoon(v){
 }
 
 // ── Init ───────────────────────────────────────────────────────────────
-var CACHE_KEY='missions_cache_v7';
+var CACHE_KEY='missions_cache_v8';
 
 // Slim rows to only columns actually used — keeps localStorage size manageable
 var PORTFOLIO_COLS=['Mission ID','UCR ID','Mission Name','STATUS','Category','Author','Authoring Company',
@@ -1766,8 +1766,9 @@ var KG = (function(){
       var coach=(m['Coach name(s)']||'').trim();
       node(mid, name, 'mission', {ucId:m['UCR ID'],status,url,coach,channels:m['Published Channels']||'',company:String(m['Authoring Company']||'').trim()});
 
-      var catRaw=String(m['Category']||'Other').trim();
-      var catParts=catRaw.split(',').map(function(c){return normCat(c.trim());}).filter(Boolean);
+      // Use UCR Product Category; fall back to portfolio category only if missing
+      var catRaw=(String(m['Category']||'').trim()||String(m['_portfolio_cat']||'').trim()||'Other');
+      var catParts=catRaw.split(',').map(function(c){return c.trim();}).filter(Boolean);
       if(!catParts.length)catParts=['Other'];
 
       // Normal mode: only first category. Multi-Cat mode: all categories.
