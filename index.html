@@ -424,9 +424,17 @@ var UC_DC_IDS = {};
 (function(){
   if(location.protocol==='file:')return;
   fetch('uc_dc_ids.json').then(function(r){return r.ok?r.json():null;}).then(function(d){
-    if(d){ UC_DC_IDS=d; console.log('UC_DC_IDS loaded:',Object.keys(d).length,'entries'); _attachServices(); }
+    if(d){ UC_DC_IDS=d; console.log('UC_DC_IDS loaded:',Object.keys(d).length,'entries'); _attachServices(); _attachDcIds(); }
   }).catch(function(){});
 })();
+
+function _attachDcIds(){
+  if(!window.allMissions||!allMissions.length) return;
+  allMissions.forEach(function(m){
+    if(!m._dcId) m._dcId=_getDcId(m);
+  });
+  if(typeof renderTable==='function') renderTable();
+}
 
 function _getDcId(m){
   var ucrId=String(m['UCR ID']||'');
