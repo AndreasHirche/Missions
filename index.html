@@ -1653,14 +1653,52 @@ init();
   <div style="display:flex;gap:8px;align-items:center;padding:5px 14px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
     <span style="font-size:0.67rem;color:#475569;font-weight:600">Show:</span>
     <div class="kg-li on" data-t="mission"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fde047"></div>Mission <span id="kg-cnt-mission" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="service"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#60a5fa"></div>Service &amp; Partner App <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="category"   onclick="kgToggleT(this)"><div class="kg-ld" style="background:#d1d5db"></div>Category <span id="kg-cnt-category" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li on" data-t="service"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#60a5fa"></div>Service &amp; Partner <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" data-t="coach"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#e879f9"></div>Coach <span id="kg-cnt-coach" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li" data-t="company"       onclick="kgToggleT(this)"><div class="kg-ld" style="background:#166534"></div>Company <span id="kg-cnt-company" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li" data-t="focus"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <div class="kg-li" data-t="focus"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
-    <div id="kg-hide-btp" class="kg-li" onclick="kgToggleBTP(this)" title="Hide Business Technology Platform category" style="border:1px solid #334155;margin-left:2px"><div class="kg-ld" style="background:#d1d5db"></div>hide BTP</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
+    <!-- Categories multi-select (includes vis.category toggle) -->
+    <div style="position:relative;display:inline-flex;align-items:center" id="kgCatWrap">
+      <button id="kgCatBtn" onclick="kgToggleCatPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+        <div style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0"></div>
+        <span id="kgCatBtnLabel">Categories</span> ▾
+      </button>
+      <div id="kgCatPicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:260px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:0.65rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Show Category nodes</div>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.72rem;color:#94a3b8">
+            <input type="checkbox" id="kgCatVisCheck" checked onchange="kgCatVisToggle(this)" style="accent-color:#d1d5db"> visible
+          </label>
+        </div>
+        <div id="kgCatList" style="display:flex;flex-direction:column;gap:1px"></div>
+        <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
+          <button onclick="kgCatSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
+          <button onclick="kgCatSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
+          <button onclick="kgCatSelectDefault()"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#a78bfa;font-size:0.7rem;cursor:pointer">Default</button>
+        </div>
+      </div>
+    </div>
+    <!-- Companies multi-select (includes vis.company toggle) -->
+    <div style="position:relative;display:inline-flex;align-items:center" id="kgCoWrap">
+      <button id="kgCoBtn" onclick="kgToggleCoPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+        <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0;opacity:0.4"></div>
+        <span id="kgCoBtnLabel">Companies</span> ▾
+      </button>
+      <div id="kgCoPicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:240px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:0.65rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Show Company nodes</div>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.72rem;color:#94a3b8">
+            <input type="checkbox" id="kgCoVisCheck" onchange="kgCoVisToggle(this)" style="accent-color:#4ade80"> visible
+          </label>
+        </div>
+        <div id="kgCoList" style="display:flex;flex-direction:column;gap:1px"></div>
+        <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
+          <button onclick="kgCoSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
+          <button onclick="kgCoSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
+        </div>
+      </div>
+    </div>
     <!-- Status multi-select -->
     <div style="position:relative;display:inline-flex;align-items:center" id="kgStatusWrap">
       <button id="kgStatusBtn" onclick="kgToggleStatusPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;outline:none;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap">Status ▾</button>
@@ -1669,7 +1707,7 @@ init();
         <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:0.74rem;color:#e2e8f0"><input type="checkbox" value="Published"  onchange="kgStatusCheck()"  style="accent-color:#4ade80">Published</label>
         <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:0.74rem;color:#e2e8f0"><input type="checkbox" value="In Review"  onchange="kgStatusCheck()"  style="accent-color:#a78bfa">In Review</label>
         <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:0.74rem;color:#e2e8f0"><input type="checkbox" value="Draft"      onchange="kgStatusCheck()"  style="accent-color:#22d3ee">Draft</label>
-        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:0.74rem;color:#e2e8f0"><input type="checkbox" value="Archived"   onchange="kgStatusCheck()"  style="accent-color:#d4cfa8">Archived</label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:0.74rem;color:#e2e8f0"><input type="checkbox" value="Archived"   onchange="kgStatusCheck()"  style="accent-color:#94a3b8">Archived</label>
         <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px">
           <button onclick="kgStatusClear()" style="background:transparent;border:none;color:#475569;font-size:0.72rem;cursor:pointer;padding:0">✕ Clear</button>
         </div>
@@ -1679,17 +1717,11 @@ init();
       <span style="position:absolute;left:8px;color:#475569;font-size:0.8rem;pointer-events:none">⌕</span>
       <input id="kgSearch" type="text" placeholder="Search…" oninput="kgOnSearch()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px 4px 26px;color:#e2e8f0;font-size:0.76rem;width:170px;outline:none;font-family:'Inter',sans-serif">
     </div>
-    <select id="kgCatFilter" onchange="kgApplyF()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 8px;color:#e2e8f0;font-size:0.74rem;outline:none;font-family:'Inter',sans-serif">
-      <option value="">All Categories</option>
-    </select>
     <select id="kgChanFilter" onchange="kgApplyF()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 8px;color:#e2e8f0;font-size:0.74rem;outline:none;font-family:'Inter',sans-serif">
       <option value="">All Channels</option>
       <option value="Discovery Center">Discovery Center</option>
       <option value="Content Discovery">Content Discovery</option>
       <option value="SAP.COM">SAP.COM</option>
-    </select>
-    <select id="kgCoFilter" onchange="kgApplyF()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 8px;color:#e2e8f0;font-size:0.74rem;outline:none;font-family:'Inter',sans-serif">
-      <option value="">All Companies</option>
     </select>
     <div class="kg-li" onclick="kgZoomFit()" style="color:#7c3aed">⟳ Reset</div>
     <span id="kg-edge-count" style="font-size:0.67rem;color:#334155;margin-left:4px"></span>
@@ -1747,9 +1779,13 @@ var KG = (function(){
 
   var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, labelSel;
   var graph3d=null, mode='2d';
-  var vis={mission:1,category:1,coach:0,tag:0,company:0,focus:0,service:1,svcopt:1,svcpartner:1};
+  var vis={mission:1,category:1,coach:0,tag:0,company:1,focus:0,service:1,svcopt:1,svcpartner:1};
   var multiCatMode=true;
-  var filt={q:'',cat:'',chan:'',co:'',statuses:[],hideBTP:false};
+  // cats: set of visible category labels (empty = all visible, but category node visibility still controlled by vis.category)
+  // cos: set of visible company labels (empty = all visible)
+  var KG_DEFAULT_CATS=new Set(['Application Development and Automation','Data and Analytics',
+    'Extended Planning and Analysis','Integration','Artificial Intelligence']);
+  var filt={q:'',cat:'',chan:'',co:'',statuses:[],cats:new Set(KG_DEFAULT_CATS),cos:new Set()};
   var built=false, selNode=null;
 
   function normCat(c){ return CAT_NORM[(c||'').toLowerCase()]||c; }
@@ -1840,13 +1876,6 @@ var KG = (function(){
     allNodes=Object.values(nodes);
     allLinks=links;
 
-    // Populate category filter
-    var sel=document.getElementById('kgCatFilter');
-    sel.innerHTML='<option value="">All Categories</option>';
-    allNodes.filter(n=>n.type==='category').map(n=>n.label).sort().forEach(function(c){
-      var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);
-    });
-
     var mc=allNodes.filter(n=>n.type==='mission').length;
     var cc=allNodes.filter(n=>n.type==='category').length;
     var ch=allNodes.filter(n=>n.type==='coach').length;
@@ -1859,13 +1888,9 @@ var KG = (function(){
     var coc2=document.getElementById('kg-cnt-company'); if(coc2)coc2.textContent=coc;
     var foc2=document.getElementById('kg-cnt-focus'); if(foc2)foc2.textContent=foc;
     var svc2=document.getElementById('kg-cnt-service'); if(svc2)svc2.textContent=sovc;
-    // Populate company filter dropdown
-    var coSel=document.getElementById('kgCoFilter');
-    if(coSel&&coSel.options.length<=1){
-      allNodes.filter(n=>n.type==='company').map(n=>n.label).sort().forEach(function(c){
-        var o=document.createElement('option');o.value=c;o.textContent=c;coSel.appendChild(o);
-      });
-    }
+    // Populate category + company pickers
+    kgBuildCatPicker();
+    kgBuildCoPicker();
     document.getElementById('kg-stat-missions').textContent=mc+' Missions';
     document.getElementById('kg-stat-cats').textContent=cc+' Categories';
     document.getElementById('kg-stat-coaches').textContent=ch+' Coaches';
@@ -1947,45 +1972,25 @@ var KG = (function(){
 
   function filteredData(){
     var nodes=allNodes.filter(function(n){
-      // svcopt and svcpartner share the 'service' toggle
       var typeVis=n.type==='svcopt'||n.type==='svcpartner'?vis['service']:vis[n.type];
       if(!typeVis) return false;
       if(filt.q&&!n.label.toLowerCase().includes(filt.q)) return false;
-      // Channel filter: hide missions not published in chosen channel
+      // Category node: only show if in selected cats set (empty set = all hidden when vis.category=0, otherwise all shown)
+      if(n.type==='category'&&filt.cats.size>0&&!filt.cats.has(n.label)) return false;
+      // Channel filter
       if(filt.chan&&n.type==='mission'){
         var ch=n.channels||'';
         if(!ch.split(',').map(function(c){return c.trim();}).includes(filt.chan)) return false;
       }
-      if(filt.co&&n.type==='mission'){
-        if((n.company||'')!==filt.co) return false;
-      }
+      // Company filter: hide missions not in selected companies (empty = all)
+      if(filt.cos.size>0&&n.type==='mission'&&!filt.cos.has(n.company||'')) return false;
+      // Status filter
       if(filt.statuses&&filt.statuses.length&&n.type==='mission'){
         var ns=n.status||'';
         if(!filt.statuses.some(function(s){return s.toLowerCase()===ns.toLowerCase();})) return false;
       }
-      // Hide BTP category node
-      if(filt.hideBTP&&n.type==='category'&&n.label==='Business Technology Platform') return false;
       return true;
     });
-    if(filt.cat){
-      var catId='cat:'+filt.cat, keep=new Set();
-      // only include catId itself if category nodes are visible
-      if(vis['category']) keep.add(catId);
-      allLinks.forEach(function(l){
-        var s=l.source?.id||l.source, t=l.target?.id||l.target;
-        if(t===catId)keep.add(s);
-      });
-      allLinks.forEach(function(l){
-        var s=l.source?.id||l.source, t=l.target?.id||l.target;
-        if(keep.has(s))keep.add(t);
-      });
-      // Never add back a category node if category toggle is off
-      if(!vis['category']){
-        nodes=nodes.filter(n=>keep.has(n.id)&&n.type!=='category');
-      } else {
-        nodes=nodes.filter(n=>keep.has(n.id));
-      }
-    }
     var nids=new Set(nodes.map(n=>n.id));
     var links=allLinks.filter(function(l){
       var s=l.source?.id||l.source, t=l.target?.id||l.target;
@@ -2275,8 +2280,11 @@ var KG = (function(){
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
     catFilter: function(c){ filt.cat=c; mode==='2d'?render2d():render3d(); },
     chanFilter: function(ch){ filt.chan=ch; mode==='2d'?render2d():render3d(); },
-    setFilter: function(f){ if(f.cat!==undefined)filt.cat=f.cat; if(f.chan!==undefined)filt.chan=f.chan; if(f.co!==undefined)filt.co=f.co; if(f.statuses!==undefined)filt.statuses=f.statuses; if(f.hideBTP!==undefined)filt.hideBTP=f.hideBTP; mode==='2d'?render2d():render3d(); },
+    setFilter: function(f){ if(f.chan!==undefined)filt.chan=f.chan; if(f.statuses!==undefined)filt.statuses=f.statuses; if(f.cats!==undefined)filt.cats=f.cats; if(f.cos!==undefined)filt.cos=f.cos; mode==='2d'?render2d():render3d(); },
     zoomFit: function(){ if(mode==='2d')zoomFit2d(); else if(graph3d)graph3d.zoomToFit(400); },
+    allCatLabels: function(){ return allNodes.filter(n=>n.type==='category').map(n=>n.label); },
+    _allNodes: function(){ return allNodes; },
+    _setVisRaw: function(t,on){ vis[t]=on?1:0; if(t==='service'){vis.svcopt=vis[t];vis.svcpartner=vis[t];} mode==='2d'?render2d():render3d(); },
     focusNode: function(id){
       var n=(window._kgNd||[]).find(x=>x.id===id); if(!n)return;
       openDP(n);
@@ -2329,19 +2337,146 @@ function kgToggleMultiCat(el){
   var on=el.classList.toggle('on');
   KG.setMultiCat(on);
 }
-function kgToggleBTP(el){
-  var active=el.classList.toggle('on'); // on = BTP hidden
-  KG.setFilter({hideBTP:active});
-}
 function kgToggleT(el){ KG.toggleT(el); }
 function kgOnSearch(){ KG.search(document.getElementById('kgSearch').value.toLowerCase().trim()); }
 function kgApplyF(){
-  KG.setFilter({
-    cat:  document.getElementById('kgCatFilter').value,
-    chan: document.getElementById('kgChanFilter').value,
-    co:   document.getElementById('kgCoFilter').value,
-  });
+  KG.setFilter({chan: document.getElementById('kgChanFilter').value});
 }
+
+// ── Category picker ────────────────────────────────────────────────────────
+function kgBuildCatPicker(){
+  var list=document.getElementById('kgCatList');
+  if(!list)return;
+  var cats=KG.allCatLabels?KG.allCatLabels():[];
+  // Count per cat from allNodes
+  var counts={};
+  if(window.KG&&KG._allNodes){KG._allNodes().filter(n=>n.type==='category').forEach(n=>{counts[n.label]=n.count||0;});}
+  list.innerHTML='';
+  cats.sort().forEach(function(c){
+    var isOn=filt.cats.has(c);
+    var cnt=counts[c]||0;
+    var row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:6px;padding:3px 4px;cursor:pointer;border-radius:4px;font-size:0.74rem;color:'+(isOn?'#e2e8f0':'#64748b');
+    row.innerHTML='<input type="checkbox" data-cat="'+c.replace(/"/g,'&quot;')+'" '+(isOn?'checked':'')+' onchange="kgCatCheck(this)" style="accent-color:#d1d5db;flex-shrink:0">'
+      +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+c+'</span>'
+      +'<span style="font-size:0.65rem;color:#334155">'+cnt+'</span>';
+    list.appendChild(row);
+  });
+  kgUpdateCatBtn();
+}
+function kgCatCheck(cb){
+  var c=cb.dataset.cat;
+  if(cb.checked) filt.cats.add(c); else filt.cats.delete(c);
+  kgUpdateCatBtn();
+  KG.setFilter({cats:filt.cats});
+}
+function kgCatVisToggle(cb){
+  KG.toggleT&&document.querySelector('.kg-li[data-t="category"]')&&KG.toggleT(document.querySelector('.kg-li[data-t="category"]'));
+  // Actually directly toggle vis
+  if(window.KG)KG._setVisRaw('category',cb.checked);
+}
+function kgCatSelectAll(on){
+  var allCats=KG.allCatLabels?KG.allCatLabels():[];
+  if(on) allCats.forEach(c=>filt.cats.add(c)); else filt.cats.clear();
+  document.querySelectorAll('#kgCatList input').forEach(cb=>{cb.checked=on;cb.closest('label').style.color=on?'#e2e8f0':'#64748b';});
+  kgUpdateCatBtn();
+  KG.setFilter({cats:filt.cats});
+}
+function kgCatSelectDefault(){
+  filt.cats=new Set(KG_DEFAULT_CATS);
+  document.querySelectorAll('#kgCatList input').forEach(cb=>{
+    var on=KG_DEFAULT_CATS.has(cb.dataset.cat);
+    cb.checked=on;cb.closest('label').style.color=on?'#e2e8f0':'#64748b';
+  });
+  kgUpdateCatBtn();
+  KG.setFilter({cats:filt.cats});
+}
+function kgUpdateCatBtn(){
+  var btn=document.getElementById('kgCatBtn');
+  if(!btn)return;
+  var n=filt.cats.size;
+  var total=KG.allCatLabels?KG.allCatLabels().length:0;
+  var lbl=document.getElementById('kgCatBtnLabel');
+  if(lbl) lbl.textContent=n===0?'Categories (0)':n===total?'Categories':n+' Categories';
+  btn.style.borderColor=n>0&&n<total?'#7c3aed':'#334155';
+}
+function kgToggleCatPicker(){
+  var p=document.getElementById('kgCatPicker');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
+// ── Company picker ─────────────────────────────────────────────────────────
+function kgBuildCoPicker(){
+  var list=document.getElementById('kgCoList');
+  if(!list)return;
+  var cos=[];
+  if(window.KG&&KG._allNodes){cos=KG._allNodes().filter(n=>n.type==='company').sort((a,b)=>b.count-a.count);}
+  list.innerHTML='';
+  cos.forEach(function(co){
+    var isOn=filt.cos.size===0||filt.cos.has(co.label);
+    var row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:6px;padding:3px 4px;cursor:pointer;border-radius:4px;font-size:0.74rem;color:'+(isOn?'#e2e8f0':'#64748b');
+    row.innerHTML='<input type="checkbox" data-co="'+co.label.replace(/"/g,'&quot;')+'" '+(isOn?'checked':'')+' onchange="kgCoCheck(this)" style="accent-color:#4ade80;flex-shrink:0">'
+      +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+co.label+'</span>'
+      +'<span style="font-size:0.65rem;color:#334155">'+co.count+'</span>';
+    list.appendChild(row);
+  });
+  kgUpdateCoBtn();
+}
+function kgCoCheck(cb){
+  // If all were selected (empty set = all), switch to explicit set excluding this one
+  if(filt.cos.size===0){
+    var allCos=[];
+    if(window.KG&&KG._allNodes)allCos=KG._allNodes().filter(n=>n.type==='company').map(n=>n.label);
+    allCos.forEach(c=>filt.cos.add(c));
+  }
+  var c=cb.dataset.co;
+  if(cb.checked) filt.cos.add(c); else filt.cos.delete(c);
+  kgUpdateCoBtn();
+  KG.setFilter({cos:filt.cos});
+}
+function kgCoVisToggle(cb){
+  if(window.KG)KG._setVisRaw('company',cb.checked);
+}
+function kgCoSelectAll(on){
+  if(on){ filt.cos.clear(); } // empty = all
+  else {
+    var allCos=[];
+    if(window.KG&&KG._allNodes)allCos=KG._allNodes().filter(n=>n.type==='company').map(n=>n.label);
+    allCos.forEach(c=>filt.cos.add(c));
+    filt.cos.clear(); // then clear = show none... wait, need explicit hide
+    // For "none": we need to hide all missions by company — set cos to a Set containing no valid company
+    filt.cos=new Set(['__none__']);
+  }
+  document.querySelectorAll('#kgCoList input').forEach(cb=>{cb.checked=on;cb.closest('label').style.color=on?'#e2e8f0':'#64748b';});
+  kgUpdateCoBtn();
+  KG.setFilter({cos:filt.cos});
+}
+function kgUpdateCoBtn(){
+  var btn=document.getElementById('kgCoBtn');
+  if(!btn)return;
+  var n=filt.cos.size;
+  var lbl=document.getElementById('kgCoBtnLabel');
+  var dot=btn.querySelector('div');
+  var isActive=n>0;
+  if(dot)dot.style.opacity=isActive?'1':'0.4';
+  if(lbl)lbl.textContent=isActive?n+' Companies':'Companies';
+  btn.style.borderColor=isActive?'#4ade80':'#334155';
+}
+function kgToggleCoPicker(){
+  var p=document.getElementById('kgCoPicker');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
+// Close pickers when clicking outside
+document.addEventListener('click',function(e){
+  ['kgCatWrap','kgCoWrap','kgStatusWrap'].forEach(function(id){
+    var wrap=document.getElementById(id);
+    if(!wrap||wrap.contains(e.target))return;
+    var picker=wrap.querySelector('[id$="Picker"]');
+    if(picker)picker.style.display='none';
+  });
+});
 function kgToggleStatusPicker(){
   var p=document.getElementById('kgStatusPicker');
   p.style.display=p.style.display==='none'?'block':'none';
