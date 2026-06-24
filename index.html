@@ -79,7 +79,9 @@ header p{color:var(--muted);font-size:0.82rem;margin-top:4px;transition:opacity 
 @media(max-width:900px){.dashboard-main{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.dashboard-main{grid-template-columns:1fr}}
 /* cat-coach-col determines row height; kg and img-status stretch to match */
-.cat-coach-col{overflow:hidden}
+.cat-coach-col{overflow:hidden;display:flex;flex-direction:column}
+.cat-coach-col .chart-card{flex:1;min-height:0;display:flex;flex-direction:column}
+.cat-coach-col .chart-inner{flex:1;height:auto!important;min-height:60px}
 .kg-tile{display:flex;flex-direction:column;overflow:hidden}
 .img-status-col{overflow:hidden}
 /* Compact — fixed height for all tiles */
