@@ -1722,17 +1722,16 @@ var KG = (function(){
     svcopt:     {color:'#60a5fa', stroke:'#1d4ed8', rBase:9},   // blau (optional)
     svcpartner: {color:'#a3e635', stroke:'#3f6212', rBase:9},   // gelbgrün
   };
-  var STATUS_COLOR = {published:'#fde047','in progress':'#fef08a',draft:'#fef9c3',retired:'#c8c4b0',
-    Published:'#fde047','In Progress':'#fef08a',Draft:'#fef9c3',Retired:'#c8c4b0','In Review':'#fef08a',Archived:'#c8c4b0'};
+  var STATUS_COLOR = {
+    published:'#fde047', Published:'#fde047',
+    'in progress':'#fef08a', 'In Progress':'#fef08a', 'in review':'#fef08a', 'In Review':'#fef08a',
+    draft:'#fef9c3', Draft:'#fef9c3',
+    retired:'#94a3b8', Retired:'#94a3b8',
+    archived:'#94a3b8', Archived:'#94a3b8'};
   var STATUS_HEX   = {published:0x4ade80,'in progress':0x38bdf8,draft:0x94a3b8,retired:0xf87171};
   var CAT_NORM = {
-    'database and data management':'Database & Data Mgmt',
-    'application development and automation':'App Dev & Automation',
-    'digital process automation':'Digital Process Automation',
-    'data and analytics':'Data & Analytics',
-    'integration suite':'Integration Suite','inegration suite':'Integration Suite',
-    'generative ai':'Generative AI','artificial intelligence':'AI','ai core':'AI',
-    'development efficiency':'Dev Efficiency','digital experience':'Digital Experience',
+    'inegration suite':'Integration Suite',
+    'ai core':'AI',
   };
 
   var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, labelSel;
