@@ -1652,6 +1652,20 @@ init();
     <div class="kg-li" data-t="focus"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus Topics <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li" onclick="kgToggleAll()" title="Toggle all" style="color:#475569;border:1px solid #334155;margin-left:2px">All</div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
+    <!-- Status multi-select -->
+    <div style="position:relative;display:inline-flex;align-items:center" id="kgStatusWrap">
+      <button id="kgStatusBtn" onclick="kgToggleStatusPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;outline:none;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap">Status ▾</button>
+      <div id="kgStatusPicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <div style="font-size:0.65rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Filter by Status</div>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:0.74rem;color:#e2e8f0"><input type="checkbox" value="Published"  onchange="kgStatusCheck()"  style="accent-color:#4ade80">Published</label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:0.74rem;color:#e2e8f0"><input type="checkbox" value="In Review"  onchange="kgStatusCheck()"  style="accent-color:#a78bfa">In Review</label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:0.74rem;color:#e2e8f0"><input type="checkbox" value="Draft"      onchange="kgStatusCheck()"  style="accent-color:#22d3ee">Draft</label>
+        <label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;font-size:0.74rem;color:#e2e8f0"><input type="checkbox" value="Archived"   onchange="kgStatusCheck()"  style="accent-color:#d4cfa8">Archived</label>
+        <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px">
+          <button onclick="kgStatusClear()" style="background:transparent;border:none;color:#475569;font-size:0.72rem;cursor:pointer;padding:0">✕ Clear</button>
+        </div>
+      </div>
+    </div>
     <div style="position:relative;display:inline-flex;align-items:center">
       <span style="position:absolute;left:8px;color:#475569;font-size:0.8rem;pointer-events:none">⌕</span>
       <input id="kgSearch" type="text" placeholder="Search…" oninput="kgOnSearch()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px 4px 26px;color:#e2e8f0;font-size:0.76rem;width:170px;outline:none;font-family:'Inter',sans-serif">
@@ -1708,8 +1722,8 @@ var KG = (function(){
     svcopt:     {color:'#60a5fa', stroke:'#1d4ed8', rBase:9},   // blau (optional)
     svcpartner: {color:'#a3e635', stroke:'#3f6212', rBase:9},   // gelbgrün
   };
-  var STATUS_COLOR = {published:'#fde047','in progress':'#fef08a',draft:'#fef9c3',retired:'#fde047',
-    Published:'#fde047','In Progress':'#fef08a',Draft:'#fef9c3',Retired:'#d1d5db','In Review':'#fef08a'};
+  var STATUS_COLOR = {published:'#fde047','in progress':'#fef08a',draft:'#fef9c3',retired:'#d4cfa8',
+    Published:'#fde047','In Progress':'#fef08a',Draft:'#fef9c3',Retired:'#d4cfa8','In Review':'#fef08a',Archived:'#d4cfa8'};
   var STATUS_HEX   = {published:0x4ade80,'in progress':0x38bdf8,draft:0x94a3b8,retired:0xf87171};
   var CAT_NORM = {
     'database and data management':'Database & Data Mgmt',
@@ -1725,7 +1739,7 @@ var KG = (function(){
   var graph3d=null, mode='2d';
   var vis={mission:1,category:1,coach:0,tag:0,company:0,focus:0,service:1,svcopt:1,svcpartner:1};
   var multiCatMode=false;
-  var filt={q:'',cat:'',chan:'',co:''};
+  var filt={q:'',cat:'',chan:'',co:'',statuses:[]};
   var built=false, selNode=null;
 
   function normCat(c){ return CAT_NORM[(c||'').toLowerCase()]||c; }
@@ -1933,6 +1947,10 @@ var KG = (function(){
       }
       if(filt.co&&n.type==='mission'){
         if((n.company||'')!==filt.co) return false;
+      }
+      if(filt.statuses&&filt.statuses.length&&n.type==='mission'){
+        var ns=n.status||'';
+        if(!filt.statuses.some(function(s){return s.toLowerCase()===ns.toLowerCase();})) return false;
       }
       return true;
     });
@@ -2244,7 +2262,7 @@ var KG = (function(){
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
     catFilter: function(c){ filt.cat=c; mode==='2d'?render2d():render3d(); },
     chanFilter: function(ch){ filt.chan=ch; mode==='2d'?render2d():render3d(); },
-    setFilter: function(f){ if(f.cat!==undefined)filt.cat=f.cat; if(f.chan!==undefined)filt.chan=f.chan; if(f.co!==undefined)filt.co=f.co; mode==='2d'?render2d():render3d(); },
+    setFilter: function(f){ if(f.cat!==undefined)filt.cat=f.cat; if(f.chan!==undefined)filt.chan=f.chan; if(f.co!==undefined)filt.co=f.co; if(f.statuses!==undefined)filt.statuses=f.statuses; mode==='2d'?render2d():render3d(); },
     zoomFit: function(){ if(mode==='2d')zoomFit2d(); else if(graph3d)graph3d.zoomToFit(400); },
     focusNode: function(id){
       var n=(window._kgNd||[]).find(x=>x.id===id); if(!n)return;
@@ -2307,6 +2325,28 @@ function kgApplyF(){
     co:   document.getElementById('kgCoFilter').value,
   });
 }
+function kgToggleStatusPicker(){
+  var p=document.getElementById('kgStatusPicker');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+function kgStatusCheck(){
+  var checked=[...document.querySelectorAll('#kgStatusPicker input:checked')].map(el=>el.value);
+  var btn=document.getElementById('kgStatusBtn');
+  btn.style.borderColor=checked.length?'#7c3aed':'#334155';
+  btn.textContent=checked.length?checked.length+' Status ▾':'Status ▾';
+  KG.setFilter({statuses:checked});
+}
+function kgStatusClear(){
+  document.querySelectorAll('#kgStatusPicker input').forEach(el=>el.checked=false);
+  document.getElementById('kgStatusBtn').style.borderColor='#334155';
+  document.getElementById('kgStatusBtn').textContent='Status ▾';
+  KG.setFilter({statuses:[]});
+}
+// Close status picker when clicking outside
+document.addEventListener('click',function(e){
+  var wrap=document.getElementById('kgStatusWrap');
+  if(wrap&&!wrap.contains(e.target)) document.getElementById('kgStatusPicker').style.display='none';
+});
 function kgZoomFit(){ KG.zoomFit(); }
 
 // Update tile label when data loads
