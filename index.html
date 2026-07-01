@@ -1366,6 +1366,7 @@ var COLS=[
   {key:'STATUS',label:'Status',sortable:true,filterCol:'status'},
   {key:'Published Channels',label:'Channels',sortable:true,filterCol:'channels'},
   {key:'_focus_topics',label:'Focus Topics',sortable:false},
+  {key:'_industries',label:'Industry',sortable:false},
   {key:'_services',label:'Services / Partner Apps',sortable:false},
   {key:'UCR ID',label:'UCR',sortable:true},
   {key:'_ucr_expiry',label:'Expiry',sortable:true},
@@ -1494,6 +1495,7 @@ function renderTable(){
           return s.n+(s.o?' (optional)':'')+(s.c&&s.c!=='Technical service'?' ['+s.c+']':'');
         }).join(', ');
         return '<td class="td-muted" style="font-size:.72rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(ftArr.join(', '))+'">'+escHtml(ft)+'</td>'
+              +'<td class="td-muted" style="font-size:.72rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml((det.industries||[]).join(', '))+'">'+(det.industries&&det.industries.length?escHtml(det.industries.slice(0,2).join(', ')):'—')+'</td>'
               +'<td style="font-size:.72rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(allSvcNames)+'">'+svcHtml+'</td>';
       })()
       +'<td style="white-space:nowrap">'+ucrLink+'</td>'
@@ -1655,7 +1657,34 @@ init();
   <div style="display:flex;gap:8px;align-items:center;padding:5px 14px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;flex-wrap:wrap">
     <span style="font-size:0.67rem;color:#475569;font-weight:600">Show:</span>
     <div class="kg-li on" data-t="mission"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fde047"></div>Mission <span id="kg-cnt-mission" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li on" data-t="service"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#60a5fa"></div>Service &amp; Partner <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <!-- Service & Partner multi-select -->
+    <div style="position:relative;display:inline-flex;align-items:center" id="kgSvcWrap">
+      <button id="kgSvcBtn" onclick="kgToggleSvcPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+        <div id="kgSvcDot" style="width:9px;height:9px;border-radius:50%;background:#60a5fa;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation();kgSvcVisClick()" title="Toggle service nodes on/off"></div>
+        <span id="kgSvcBtnLabel">Services</span> ▾
+      </button>
+      <div id="kgSvcPicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:260px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <div id="kgSvcList" style="display:flex;flex-direction:column;gap:1px"></div>
+        <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
+          <button onclick="kgSvcSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
+          <button onclick="kgSvcSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
+        </div>
+      </div>
+    </div>
+    <!-- Industry multi-select -->
+    <div style="position:relative;display:inline-flex;align-items:center" id="kgIndWrap">
+      <button id="kgIndBtn" onclick="kgToggleIndPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+        <div style="width:9px;height:9px;border-radius:50%;background:#fb923c;flex-shrink:0"></div>
+        <span id="kgIndBtnLabel">Industry</span> ▾
+      </button>
+      <div id="kgIndPicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:260px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <div id="kgIndList" style="display:flex;flex-direction:column;gap:1px"></div>
+        <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
+          <button onclick="kgIndSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
+          <button onclick="kgIndSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
+        </div>
+      </div>
+    </div>
     <!-- Coach multi-select -->
     <div style="position:relative;display:inline-flex;align-items:center" id="kgCoachWrap">
       <button id="kgCoachBtn" onclick="kgToggleCoachPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
@@ -1787,7 +1816,7 @@ var KG = (function(){
   var graph3d=null, mode='2d';
   var vis={mission:1,category:1,coach:0,tag:0,company:1,focus:0,service:1,svcopt:1,svcpartner:1};
   var multiCatMode=true;
-  var filt={q:'',cat:'',chan:'',co:'',statuses:[],cats:new Set(KG_DEFAULT_CATS),cos:new Set(),coaches:new Set()};
+  var filt={q:'',cat:'',chan:'',co:'',statuses:[],cats:new Set(KG_DEFAULT_CATS),cos:new Set(),coaches:new Set(),industries:new Set(),svcs:new Set()};
   var built=false, selNode=null;
 
   function normCat(c){ return CAT_NORM[(c||'').toLowerCase()]||c; }
@@ -1811,7 +1840,9 @@ var KG = (function(){
       var name=m['Mission Name']||m['Title']||('Mission '+m['UCR ID']);
       var url=m['Link to Discovery Center']||'#';
       var coach=(m['Coach name(s)']||'').trim();
-      node(mid, name, 'mission', {ucId:m['UCR ID'],status,url,coach,channels:m['Published Channels']||'',company:String(m['Authoring Company']||'').trim()});
+      var det=m._ucr_detail||UC_DETAILS[m['UCR ID']||'']||{};
+      var industries=det.industries||m._industries||[];
+      node(mid, name, 'mission', {ucId:m['UCR ID'],status,url,coach,channels:m['Published Channels']||'',company:String(m['Authoring Company']||'').trim(),industries:industries});
 
       // Use UCR Product Category; fall back to portfolio category only if missing
       var catRaw=(String(m['Category']||'').trim()||String(m['_portfolio_cat']||'').trim()||'Other');
@@ -1894,6 +1925,8 @@ var KG = (function(){
     kgBuildCatPicker();
     kgBuildCoPicker();
     kgBuildCoachPicker();
+    kgBuildSvcPicker();
+    kgBuildIndPicker();
     // Also update the toggle button counts
     var cm=document.getElementById('kg-cnt-mission'); if(cm)cm.textContent=mc;
     var cc2=document.getElementById('kg-cnt-category'); if(cc2)cc2.textContent=cc;
@@ -1987,6 +2020,15 @@ var KG = (function(){
       if(filt.coaches.size>0){
         if(n.type==='coach'&&!filt.coaches.has(n.label)) return false;
         if(n.type==='mission'&&!filt.coaches.has(n.coach||'')) return false;
+      }
+      // Industry filter: hide missions not in any selected industry
+      if(filt.industries.size>0&&n.type==='mission'){
+        var mi=n.industries||[];
+        if(!mi.some(function(i){return filt.industries.has(i);})) return false;
+      }
+      // Service filter: hide service/svcopt/svcpartner nodes not selected
+      if(filt.svcs.size>0&&(n.type==='service'||n.type==='svcopt'||n.type==='svcpartner')){
+        if(!filt.svcs.has(n.label)) return false;
       }
       // Status filter
       if(filt.statuses&&filt.statuses.length&&n.type==='mission'){
@@ -2320,7 +2362,7 @@ var KG = (function(){
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
     catFilter: function(c){ filt.cat=c; mode==='2d'?render2d():render3d(); },
     chanFilter: function(ch){ filt.chan=ch; mode==='2d'?render2d():render3d(); },
-    setFilter: function(f){ if(f.chan!==undefined)filt.chan=f.chan; if(f.statuses!==undefined)filt.statuses=f.statuses; if(f.cats!==undefined)filt.cats=f.cats; if(f.cos!==undefined)filt.cos=f.cos; if(f.coaches!==undefined)filt.coaches=f.coaches; mode==='2d'?render2d():render3d(); },
+    setFilter: function(f){ if(f.chan!==undefined)filt.chan=f.chan; if(f.statuses!==undefined)filt.statuses=f.statuses; if(f.cats!==undefined)filt.cats=f.cats; if(f.cos!==undefined)filt.cos=f.cos; if(f.coaches!==undefined)filt.coaches=f.coaches; if(f.industries!==undefined)filt.industries=f.industries; if(f.svcs!==undefined)filt.svcs=f.svcs; mode==='2d'?render2d():render3d(); },
     zoomFit: function(){ if(mode==='2d')zoomFit2d(); else if(graph3d)graph3d.zoomToFit(400); },
     allCatLabels: function(){ return allNodes.filter(n=>n.type==='category').map(n=>n.label); },
     _allNodes: function(){ return allNodes; },
@@ -2626,9 +2668,160 @@ function kgToggleCoachPicker(){
   p.style.display=p.style.display==='none'?'block':'none';
 }
 
+// ── Service & Partner picker ────────────────────────────────────────────────
+function kgBuildSvcPicker(){
+  var list=document.getElementById('kgSvcList');
+  if(!list||!window.KG)return;
+  var filt=KG.getFilt(), vis=KG.getVis();
+  var svcs=KG._allNodes().filter(n=>n.type==='service'||n.type==='svcopt'||n.type==='svcpartner').sort((a,b)=>b.count-a.count).slice(0,80);
+  list.innerHTML='';
+  svcs.forEach(function(sv){
+    var isOn=filt.svcs.size===0||filt.svcs.has(sv.label);
+    var col=sv.type==='svcpartner'?'#38bdf8':sv.type==='svcopt'?'#93c5fd':'#60a5fa';
+    var row=document.createElement('div');
+    row.dataset.svc=sv.label;
+    row.style.cssText='display:flex;align-items:center;gap:7px;padding:4px 6px;cursor:pointer;border-radius:5px;user-select:none';
+    row.onmouseenter=function(){this.style.background='rgba(255,255,255,0.05)';};
+    row.onmouseleave=function(){this.style.background='';};
+    row.onclick=function(){kgSvcToggleRow(this);};
+    var dot=document.createElement('div');
+    dot.style.cssText='width:9px;height:9px;border-radius:2px;flex-shrink:0;transition:background .15s;background:'+(isOn?col:'#334155');
+    var lbl=document.createElement('span');
+    lbl.style.cssText='flex:1;font-size:0.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(isOn?'#e2e8f0':'#475569');
+    lbl.textContent=sv.label;
+    var cnt=document.createElement('span');
+    cnt.style.cssText='font-size:0.65rem;color:#475569;flex-shrink:0';
+    cnt.textContent=sv.count;
+    row.appendChild(dot);row.appendChild(lbl);row.appendChild(cnt);
+    list.appendChild(row);
+  });
+  kgUpdateSvcBtn();
+}
+function kgSvcToggleRow(row){
+  var filt=KG.getFilt();
+  var c=row.dataset.svc;
+  var svcNodes=KG._allNodes().filter(n=>n.type==='service'||n.type==='svcopt'||n.type==='svcpartner');
+  if(filt.svcs.size===0) svcNodes.forEach(n=>filt.svcs.add(n.label));
+  var isOn=filt.svcs.has(c);
+  var dot=row.children[0], lbl=row.children[1];
+  var col=isOn?'#334155':'#60a5fa';
+  if(isOn){filt.svcs.delete(c);dot.style.background='#334155';lbl.style.color='#475569';}
+  else{filt.svcs.add(c);dot.style.background='#60a5fa';lbl.style.color='#e2e8f0';}
+  kgUpdateSvcBtn();
+  KG.setFilter({svcs:filt.svcs});
+}
+function kgSvcVisClick(){
+  var vis=KG.getVis();
+  var on=!vis['service'];
+  KG._setVisRaw('service',on);
+  var dot=document.getElementById('kgSvcDot');
+  if(dot)dot.style.opacity=on?'1':'0.35';
+}
+function kgSvcSelectAll(on){
+  var filt=KG.getFilt();
+  if(on) filt.svcs.clear();
+  else filt.svcs=new Set(['__none__']);
+  document.querySelectorAll('#kgSvcList [data-svc]').forEach(function(row){
+    row.children[0].style.background=on?'#60a5fa':'#334155';
+    row.children[1].style.color=on?'#e2e8f0':'#475569';
+  });
+  kgUpdateSvcBtn();
+  KG.setFilter({svcs:filt.svcs});
+}
+function kgUpdateSvcBtn(){
+  if(!window.KG)return;
+  var filt=KG.getFilt(), vis=KG.getVis();
+  var n=filt.svcs.size;
+  var total=document.querySelectorAll('#kgSvcList [data-svc]').length;
+  var lbl=document.getElementById('kgSvcBtnLabel');
+  var dot=document.getElementById('kgSvcDot');
+  var btn=document.getElementById('kgSvcBtn');
+  if(dot) dot.style.opacity=vis['service']?'1':'0.35';
+  if(lbl) lbl.textContent=(n===0||n===total)?'Services':n+' Services';
+  if(btn) btn.style.borderColor=(n>0&&n<total)?'#60a5fa':'#334155';
+}
+function kgToggleSvcPicker(){
+  var p=document.getElementById('kgSvcPicker');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
+// ── Industry picker ────────────────────────────────────────────────────────
+function kgBuildIndPicker(){
+  var list=document.getElementById('kgIndList');
+  if(!list||!window.KG)return;
+  var filt=KG.getFilt();
+  // Collect industries from mission nodes
+  var indCounts={};
+  KG._allNodes().filter(n=>n.type==='mission').forEach(function(n){
+    (n.industries||[]).forEach(function(i){indCounts[i]=(indCounts[i]||0)+1;});
+  });
+  var inds=Object.entries(indCounts).sort((a,b)=>b[1]-a[1]);
+  list.innerHTML='';
+  inds.forEach(function(entry){
+    var ind=entry[0], cnt=entry[1];
+    var isOn=filt.industries.size===0||filt.industries.has(ind);
+    var row=document.createElement('div');
+    row.dataset.ind=ind;
+    row.style.cssText='display:flex;align-items:center;gap:7px;padding:4px 6px;cursor:pointer;border-radius:5px;user-select:none';
+    row.onmouseenter=function(){this.style.background='rgba(255,255,255,0.05)';};
+    row.onmouseleave=function(){this.style.background='';};
+    row.onclick=function(){kgIndToggleRow(this);};
+    var dot=document.createElement('div');
+    dot.style.cssText='width:9px;height:9px;border-radius:50%;flex-shrink:0;transition:background .15s;background:'+(isOn?'#fb923c':'#334155');
+    var lbl=document.createElement('span');
+    lbl.style.cssText='flex:1;font-size:0.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(isOn?'#e2e8f0':'#475569');
+    lbl.textContent=ind;
+    var cntEl=document.createElement('span');
+    cntEl.style.cssText='font-size:0.65rem;color:#475569;flex-shrink:0';
+    cntEl.textContent=cnt;
+    row.appendChild(dot);row.appendChild(lbl);row.appendChild(cntEl);
+    list.appendChild(row);
+  });
+  kgUpdateIndBtn();
+}
+function kgIndToggleRow(row){
+  var filt=KG.getFilt();
+  var ind=row.dataset.ind;
+  if(filt.industries.size===0){
+    var indCounts={};
+    KG._allNodes().filter(n=>n.type==='mission').forEach(function(n){(n.industries||[]).forEach(function(i){indCounts[i]=1;});});
+    Object.keys(indCounts).forEach(function(i){filt.industries.add(i);});
+  }
+  var isOn=filt.industries.has(ind);
+  if(isOn){filt.industries.delete(ind);row.children[0].style.background='#334155';row.children[1].style.color='#475569';}
+  else{filt.industries.add(ind);row.children[0].style.background='#fb923c';row.children[1].style.color='#e2e8f0';}
+  kgUpdateIndBtn();
+  KG.setFilter({industries:filt.industries});
+}
+function kgIndSelectAll(on){
+  var filt=KG.getFilt();
+  if(on) filt.industries.clear();
+  else filt.industries=new Set(['__none__']);
+  document.querySelectorAll('#kgIndList [data-ind]').forEach(function(row){
+    row.children[0].style.background=on?'#fb923c':'#334155';
+    row.children[1].style.color=on?'#e2e8f0':'#475569';
+  });
+  kgUpdateIndBtn();
+  KG.setFilter({industries:filt.industries});
+}
+function kgUpdateIndBtn(){
+  if(!window.KG)return;
+  var filt=KG.getFilt();
+  var n=filt.industries.size;
+  var total=document.querySelectorAll('#kgIndList [data-ind]').length;
+  var lbl=document.getElementById('kgIndBtnLabel');
+  var btn=document.getElementById('kgIndBtn');
+  if(lbl) lbl.textContent=(n===0||n===total)?'Industry':n+' Industries';
+  if(btn) btn.style.borderColor=(n>0&&n<total)?'#fb923c':'#334155';
+}
+function kgToggleIndPicker(){
+  var p=document.getElementById('kgIndPicker');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
 // Close pickers when clicking outside
 document.addEventListener('click',function(e){
-  ['kgCatWrap','kgCoWrap','kgCoachWrap','kgStatusWrap'].forEach(function(id){
+  ['kgCatWrap','kgCoWrap','kgCoachWrap','kgSvcWrap','kgIndWrap','kgStatusWrap'].forEach(function(id){
     var wrap=document.getElementById(id);
     if(!wrap||wrap.contains(e.target))return;
     var picker=wrap.querySelector('[id$="Picker"]');
