@@ -1674,7 +1674,7 @@ init();
     <!-- Industry multi-select -->
     <div style="position:relative;display:inline-flex;align-items:center" id="kgIndWrap">
       <button id="kgIndBtn" onclick="kgToggleIndPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
-        <div style="width:9px;height:9px;border-radius:50%;background:#fb923c;flex-shrink:0"></div>
+        <div id="kgIndDot" style="width:9px;height:9px;border-radius:50%;background:#fb923c;flex-shrink:0;cursor:pointer;opacity:0.4" onclick="event.stopPropagation();kgIndVisClick()" title="Toggle industry nodes on/off"></div>
         <span id="kgIndBtnLabel">Industry</span> ▾
       </button>
       <div id="kgIndPicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:260px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
@@ -1799,6 +1799,7 @@ var KG = (function(){
     service:    {color:'#60a5fa', stroke:'#1d4ed8', rBase:10},  // blau
     svcopt:     {color:'#93c5fd', stroke:'#3b82f6', rBase:9},   // hellblau
     svcpartner: {color:'#38bdf8', stroke:'#0284c7', rBase:9},   // türkis-blau
+    industry:   {color:'#fb923c', stroke:'#c2410c', rBase:12}, // orange
   };
   var STATUS_COLOR = {
     published:'#fde047', Published:'#fde047',
@@ -1814,7 +1815,7 @@ var KG = (function(){
 
   var allNodes=[], allLinks=[], sim, svgSel, zoomBeh, linkSel, nodeSel, circSel, rectSel, labelSel;
   var graph3d=null, mode='2d';
-  var vis={mission:1,category:1,coach:0,tag:0,company:1,focus:0,service:1,svcopt:1,svcpartner:1};
+  var vis={mission:1,category:1,coach:0,tag:0,company:1,focus:0,service:1,svcopt:1,svcpartner:1,industry:0};
   var multiCatMode=true;
   var filt={q:'',cat:'',chan:'',co:'',statuses:[],cats:new Set(KG_DEFAULT_CATS),cos:new Set(),coaches:new Set(),industries:new Set(),svcs:new Set()};
   var built=false, selNode=null;
@@ -1881,6 +1882,13 @@ var KG = (function(){
         if(!ft)return;
         node('ft:'+ft, ft, 'focus').count++;
         links.push({source:mid, target:'ft:'+ft, rel:'focus'});
+      });
+
+      // Industries
+      industries.forEach(function(ind){
+        if(!ind)return;
+        node('ind:'+ind, ind, 'industry').count++;
+        links.push({source:mid, target:'ind:'+ind, rel:'industry'});
       });
 
       // Services from UC_SERVICES (keyed by DC mission ID from link)
@@ -2749,19 +2757,13 @@ function kgToggleSvcPicker(){
 function kgBuildIndPicker(){
   var list=document.getElementById('kgIndList');
   if(!list||!window.KG)return;
-  var filt=KG.getFilt();
-  // Collect industries from mission nodes
-  var indCounts={};
-  KG._allNodes().filter(n=>n.type==='mission').forEach(function(n){
-    (n.industries||[]).forEach(function(i){indCounts[i]=(indCounts[i]||0)+1;});
-  });
-  var inds=Object.entries(indCounts).sort((a,b)=>b[1]-a[1]);
+  var filt=KG.getFilt(), vis=KG.getVis();
+  var inds=KG._allNodes().filter(n=>n.type==='industry').sort((a,b)=>b.count-a.count);
   list.innerHTML='';
-  inds.forEach(function(entry){
-    var ind=entry[0], cnt=entry[1];
-    var isOn=filt.industries.size===0||filt.industries.has(ind);
+  inds.forEach(function(ind){
+    var isOn=filt.industries.size===0||filt.industries.has(ind.label);
     var row=document.createElement('div');
-    row.dataset.ind=ind;
+    row.dataset.ind=ind.label;
     row.style.cssText='display:flex;align-items:center;gap:7px;padding:4px 6px;cursor:pointer;border-radius:5px;user-select:none';
     row.onmouseenter=function(){this.style.background='rgba(255,255,255,0.05)';};
     row.onmouseleave=function(){this.style.background='';};
@@ -2770,10 +2772,10 @@ function kgBuildIndPicker(){
     dot.style.cssText='width:9px;height:9px;border-radius:50%;flex-shrink:0;transition:background .15s;background:'+(isOn?'#fb923c':'#334155');
     var lbl=document.createElement('span');
     lbl.style.cssText='flex:1;font-size:0.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(isOn?'#e2e8f0':'#475569');
-    lbl.textContent=ind;
+    lbl.textContent=ind.label;
     var cntEl=document.createElement('span');
     cntEl.style.cssText='font-size:0.65rem;color:#475569;flex-shrink:0';
-    cntEl.textContent=cnt;
+    cntEl.textContent=ind.count;
     row.appendChild(dot);row.appendChild(lbl);row.appendChild(cntEl);
     list.appendChild(row);
   });
@@ -2783,15 +2785,20 @@ function kgIndToggleRow(row){
   var filt=KG.getFilt();
   var ind=row.dataset.ind;
   if(filt.industries.size===0){
-    var indCounts={};
-    KG._allNodes().filter(n=>n.type==='mission').forEach(function(n){(n.industries||[]).forEach(function(i){indCounts[i]=1;});});
-    Object.keys(indCounts).forEach(function(i){filt.industries.add(i);});
+    KG._allNodes().filter(n=>n.type==='industry').forEach(n=>filt.industries.add(n.label));
   }
   var isOn=filt.industries.has(ind);
   if(isOn){filt.industries.delete(ind);row.children[0].style.background='#334155';row.children[1].style.color='#475569';}
   else{filt.industries.add(ind);row.children[0].style.background='#fb923c';row.children[1].style.color='#e2e8f0';}
   kgUpdateIndBtn();
   KG.setFilter({industries:filt.industries});
+}
+function kgIndVisClick(){
+  var vis=KG.getVis();
+  var on=!vis['industry'];
+  KG._setVisRaw('industry',on);
+  var dot=document.getElementById('kgIndDot');
+  if(dot)dot.style.opacity=on?'1':'0.35';
 }
 function kgIndSelectAll(on){
   var filt=KG.getFilt();
@@ -2806,11 +2813,13 @@ function kgIndSelectAll(on){
 }
 function kgUpdateIndBtn(){
   if(!window.KG)return;
-  var filt=KG.getFilt();
+  var filt=KG.getFilt(), vis=KG.getVis();
   var n=filt.industries.size;
   var total=document.querySelectorAll('#kgIndList [data-ind]').length;
   var lbl=document.getElementById('kgIndBtnLabel');
+  var dot=document.getElementById('kgIndDot');
   var btn=document.getElementById('kgIndBtn');
+  if(dot) dot.style.opacity=vis['industry']?'1':'0.35';
   if(lbl) lbl.textContent=(n===0||n===total)?'Industry':n+' Industries';
   if(btn) btn.style.borderColor=(n>0&&n<total)?'#fb923c':'#334155';
 }
