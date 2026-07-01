@@ -1656,7 +1656,20 @@ init();
     <span style="font-size:0.67rem;color:#475569;font-weight:600">Show:</span>
     <div class="kg-li on" data-t="mission"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#fde047"></div>Mission <span id="kg-cnt-mission" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div class="kg-li on" data-t="service"    onclick="kgToggleT(this)"><div class="kg-ld" style="background:#60a5fa"></div>Service &amp; Partner <span id="kg-cnt-service" style="opacity:0.6;font-size:0.65rem"></span></div>
-    <div class="kg-li" data-t="coach"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#e879f9"></div>Coach <span id="kg-cnt-coach" style="opacity:0.6;font-size:0.65rem"></span></div>
+    <!-- Coach multi-select -->
+    <div style="position:relative;display:inline-flex;align-items:center" id="kgCoachWrap">
+      <button id="kgCoachBtn" onclick="kgToggleCoachPicker()" style="background:#1e293b;border:1px solid #334155;border-radius:7px;padding:4px 10px;color:#e2e8f0;font-size:0.74rem;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px">
+        <div id="kgCoachDot" style="width:9px;height:9px;border-radius:50%;background:#a21caf;flex-shrink:0;cursor:pointer;opacity:0.4" onclick="event.stopPropagation();kgCoachVisClick()" title="Toggle coach nodes on/off"></div>
+        <span id="kgCoachBtnLabel">Coaches</span> ▾
+      </button>
+      <div id="kgCoachPicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:220px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <div id="kgCoachList" style="display:flex;flex-direction:column;gap:1px"></div>
+        <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
+          <button onclick="kgCoachSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
+          <button onclick="kgCoachSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
+        </div>
+      </div>
+    </div>
     <div class="kg-li" data-t="focus"         onclick="kgToggleT(this)"><div class="kg-ld" style="background:#f97316"></div>Focus <span id="kg-cnt-focus" style="opacity:0.6;font-size:0.65rem"></span></div>
     <div style="width:1px;background:#1e293b;height:14px;margin:0 2px"></div>
     <div style="position:relative;display:inline-flex;align-items:center" id="kgCatWrap">
@@ -1774,7 +1787,7 @@ var KG = (function(){
   var graph3d=null, mode='2d';
   var vis={mission:1,category:1,coach:0,tag:0,company:1,focus:0,service:1,svcopt:1,svcpartner:1};
   var multiCatMode=true;
-  var filt={q:'',cat:'',chan:'',co:'',statuses:[],cats:new Set(KG_DEFAULT_CATS),cos:new Set()};
+  var filt={q:'',cat:'',chan:'',co:'',statuses:[],cats:new Set(KG_DEFAULT_CATS),cos:new Set(),coaches:new Set()};
   var built=false, selNode=null;
 
   function normCat(c){ return CAT_NORM[(c||'').toLowerCase()]||c; }
@@ -1880,6 +1893,7 @@ var KG = (function(){
     // Populate category + company pickers
     kgBuildCatPicker();
     kgBuildCoPicker();
+    kgBuildCoachPicker();
     // Also update the toggle button counts
     var cm=document.getElementById('kg-cnt-mission'); if(cm)cm.textContent=mc;
     var cc2=document.getElementById('kg-cnt-category'); if(cc2)cc2.textContent=cc;
@@ -1969,6 +1983,11 @@ var KG = (function(){
       }
       // Company filter: hide missions not in selected companies (empty = all)
       if(filt.cos.size>0&&n.type==='mission'&&!filt.cos.has(n.company||'')) return false;
+      // Coach filter: hide coach nodes not selected; hide missions without a selected coach
+      if(filt.coaches.size>0){
+        if(n.type==='coach'&&!filt.coaches.has(n.label)) return false;
+        if(n.type==='mission'&&!filt.coaches.has(n.coach||'')) return false;
+      }
       // Status filter
       if(filt.statuses&&filt.statuses.length&&n.type==='mission'){
         var ns=n.status||'';
@@ -2301,7 +2320,7 @@ var KG = (function(){
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
     catFilter: function(c){ filt.cat=c; mode==='2d'?render2d():render3d(); },
     chanFilter: function(ch){ filt.chan=ch; mode==='2d'?render2d():render3d(); },
-    setFilter: function(f){ if(f.chan!==undefined)filt.chan=f.chan; if(f.statuses!==undefined)filt.statuses=f.statuses; if(f.cats!==undefined)filt.cats=f.cats; if(f.cos!==undefined)filt.cos=f.cos; mode==='2d'?render2d():render3d(); },
+    setFilter: function(f){ if(f.chan!==undefined)filt.chan=f.chan; if(f.statuses!==undefined)filt.statuses=f.statuses; if(f.cats!==undefined)filt.cats=f.cats; if(f.cos!==undefined)filt.cos=f.cos; if(f.coaches!==undefined)filt.coaches=f.coaches; mode==='2d'?render2d():render3d(); },
     zoomFit: function(){ if(mode==='2d')zoomFit2d(); else if(graph3d)graph3d.zoomToFit(400); },
     allCatLabels: function(){ return allNodes.filter(n=>n.type==='category').map(n=>n.label); },
     _allNodes: function(){ return allNodes; },
@@ -2531,9 +2550,85 @@ function kgToggleCoPicker(){
   p.style.display=p.style.display==='none'?'block':'none';
 }
 
+// ── Coach picker ───────────────────────────────────────────────────────────
+function kgBuildCoachPicker(){
+  var list=document.getElementById('kgCoachList');
+  if(!list||!window.KG)return;
+  var filt=KG.getFilt(), vis=KG.getVis();
+  var coaches=KG._allNodes().filter(n=>n.type==='coach').sort((a,b)=>b.count-a.count);
+  list.innerHTML='';
+  coaches.forEach(function(co){
+    var isOn=filt.coaches.size===0||filt.coaches.has(co.label);
+    var row=document.createElement('div');
+    row.dataset.coach=co.label;
+    row.style.cssText='display:flex;align-items:center;gap:7px;padding:4px 6px;cursor:pointer;border-radius:5px;user-select:none';
+    row.onmouseenter=function(){this.style.background='rgba(255,255,255,0.05)';};
+    row.onmouseleave=function(){this.style.background='';};
+    row.onclick=function(){kgCoachToggleRow(this);};
+    var dot=document.createElement('div');
+    dot.style.cssText='width:9px;height:9px;border-radius:50%;flex-shrink:0;transition:background .15s;background:'+(isOn?'#e879f9':'#334155');
+    var lbl=document.createElement('span');
+    lbl.style.cssText='flex:1;font-size:0.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(isOn?'#e2e8f0':'#475569');
+    lbl.textContent=co.label;
+    var cnt=document.createElement('span');
+    cnt.style.cssText='font-size:0.65rem;color:#475569;flex-shrink:0';
+    cnt.textContent=co.count;
+    row.appendChild(dot);row.appendChild(lbl);row.appendChild(cnt);
+    list.appendChild(row);
+  });
+  kgUpdateCoachBtn();
+}
+function kgCoachToggleRow(row){
+  var filt=KG.getFilt();
+  var c=row.dataset.coach;
+  if(filt.coaches.size===0){
+    KG._allNodes().filter(n=>n.type==='coach').forEach(n=>filt.coaches.add(n.label));
+  }
+  var isOn=filt.coaches.has(c);
+  var dot=row.children[0], lbl=row.children[1];
+  if(isOn){filt.coaches.delete(c);dot.style.background='#334155';lbl.style.color='#475569';}
+  else{filt.coaches.add(c);dot.style.background='#e879f9';lbl.style.color='#e2e8f0';}
+  kgUpdateCoachBtn();
+  KG.setFilter({coaches:filt.coaches});
+}
+function kgCoachVisClick(){
+  var vis=KG.getVis();
+  var on=!vis['coach'];
+  KG._setVisRaw('coach',on);
+  var dot=document.getElementById('kgCoachDot');
+  if(dot)dot.style.opacity=on?'1':'0.35';
+}
+function kgCoachSelectAll(on){
+  var filt=KG.getFilt();
+  if(on) filt.coaches.clear();
+  else filt.coaches=new Set(['__none__']);
+  document.querySelectorAll('#kgCoachList [data-coach]').forEach(function(row){
+    row.children[0].style.background=on?'#e879f9':'#334155';
+    row.children[1].style.color=on?'#e2e8f0':'#475569';
+  });
+  kgUpdateCoachBtn();
+  KG.setFilter({coaches:filt.coaches});
+}
+function kgUpdateCoachBtn(){
+  if(!window.KG)return;
+  var filt=KG.getFilt(), vis=KG.getVis();
+  var n=filt.coaches.size;
+  var total=document.querySelectorAll('#kgCoachList [data-coach]').length;
+  var lbl=document.getElementById('kgCoachBtnLabel');
+  var dot=document.getElementById('kgCoachDot');
+  var btn=document.getElementById('kgCoachBtn');
+  if(dot) dot.style.opacity=vis['coach']?'1':'0.35';
+  if(lbl) lbl.textContent=(n===0||n===total)?'Coaches':n+' Coaches';
+  if(btn) btn.style.borderColor=(n>0&&n<total)?'#e879f9':'#334155';
+}
+function kgToggleCoachPicker(){
+  var p=document.getElementById('kgCoachPicker');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
 // Close pickers when clicking outside
 document.addEventListener('click',function(e){
-  ['kgCatWrap','kgCoWrap','kgStatusWrap'].forEach(function(id){
+  ['kgCatWrap','kgCoWrap','kgCoachWrap','kgStatusWrap'].forEach(function(id){
     var wrap=document.getElementById(id);
     if(!wrap||wrap.contains(e.target))return;
     var picker=wrap.querySelector('[id$="Picker"]');
