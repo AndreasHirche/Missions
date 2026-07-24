@@ -1281,6 +1281,8 @@ function filterByCell(col, value){
     document.getElementById('fCompany').value=value;
   } else if(col==='channels'){
     document.getElementById('fChannels').value=value;
+  } else if(col==='uctype'){
+    document.getElementById('fUcType').value=value;
   } else if(col==='_coach'){
     setCoach(value);
     return;
@@ -1491,6 +1493,7 @@ function renderTable(){
       +'<td class="td-muted filterable" title="Filter by author" onclick="filterByCell(\'Author\',\''+escHtml(author)+'\')">'+escHtml(author||'—')+(d.author?diffDot(d.author):'')+'</td>'
       +'<td class="filterable" title="Filter by status" onclick="filterByCell(\'STATUS\',\''+escHtml(String(m['STATUS']||'').trim())+'\')">'+(badgeStatus(m['STATUS']))+(d.status?diffDot(d.status):'')+'</td>'
       +'<td class="td-muted filterable" style="font-size:.72rem;white-space:nowrap" title="Filter by channel" onclick="filterByCell(\'channels\',this.dataset.val)" data-val="'+escHtml(String(m['Published Channels']||'').split(',')[0].trim())+'">'+escHtml((m['Published Channels']||'—').split(',').map(function(c){return c.trim();}).join(', '))+'</td>'
+      +(function(){var t=String(m['_uc_type']||'').trim();return '<td class="td-muted filterable" style="font-size:.72rem;white-space:nowrap" title="Filter by type" onclick="filterByCell(\'uctype\',\''+escHtml(t)+'\')">'+escHtml(t||'—')+'</td>';})()
       +(function(){
         // Focus topics: prefer CSV field, fallback to UCR detail
         var det=m._ucr_detail||{};
