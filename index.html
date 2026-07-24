@@ -1928,10 +1928,9 @@ var KG = (function(){
     if(_logoCache[label]){cb(_logoCache[label]);return;}
     var img=new Image();
     var domain=companyDomain(label);
-    img.crossOrigin='anonymous';
     img.onload=function(){_logoCache[label]={img:img,ok:true};cb(_logoCache[label]);};
     img.onerror=function(){_logoCache[label]={img:null,ok:false};cb(_logoCache[label]);};
-    img.src='https://logo.clearbit.com/'+domain+'?size=64';
+    img.src='https://www.google.com/s2/favicons?domain='+domain+'&sz=64';
   }
   // Pre-fetch logos for all company nodes
   function prefetchLogos(){
@@ -2245,26 +2244,30 @@ var KG = (function(){
         .on('drag', (e,d)=>{d.fx=e.x;d.fy=e.y;})
         .on('end',  (e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
 
-    // Company logo overlays — clipped circular images
+    // Company logo overlays — group with clip circle + image, moved in tick
     var coNodes=otherNodes.filter(function(n){return n.type==='company';});
     var defs=svgSel.select('defs');
     if(defs.empty()) defs=svgSel.append('defs');
+    // Create/update clipPaths (userSpaceOnUse, cx/cy updated in tick)
     coNodes.forEach(function(n){
       var clipId='coclip_'+n.id.replace(/[^a-z0-9]/gi,'_');
+      var r=nodeR(n)-1;
       if(defs.select('#'+clipId).empty()){
-        defs.append('clipPath').attr('id',clipId)
-          .append('circle').attr('r',nodeR(n)-1);
+        defs.append('clipPath').attr('id',clipId).attr('clipPathUnits','userSpaceOnUse')
+          .append('circle').attr('class','coclip-c').attr('r',r).attr('cx',n.x||0).attr('cy',n.y||0);
       }
       var logo=_logoCache[n.label];
       if(logo&&logo.ok){
-        root.append('image')
-          .attr('class','co-logo')
+        // white bg circle
+        root.append('circle').attr('class','co-logo-bg').attr('data-nid',n.id)
+          .attr('r',r).attr('cx',n.x||0).attr('cy',n.y||0)
+          .attr('fill','white').attr('pointer-events','none');
+        root.append('image').attr('class','co-logo').attr('data-nid',n.id)
           .attr('href',logo.img.src)
-          .attr('x',-nodeR(n)+1).attr('y',-nodeR(n)+1)
-          .attr('width',(nodeR(n)-1)*2).attr('height',(nodeR(n)-1)*2)
+          .attr('x',(n.x||0)-r).attr('y',(n.y||0)-r)
+          .attr('width',r*2).attr('height',r*2)
           .attr('clip-path','url(#'+clipId+')')
-          .attr('pointer-events','none')
-          .attr('data-nid',n.id);
+          .attr('pointer-events','none');
       }
     });
     prefetchLogos();
@@ -2312,12 +2315,18 @@ var KG = (function(){
     circSel.attr('cx',d=>d.x).attr('cy',d=>d.y);
     rectSel.attr('x',d=>d.x-nodeR(d)).attr('y',d=>d.y-nodeR(d));
     labelSel.attr('x',d=>d.x).attr('y',d=>d.y);
-    // Move company logo images
+    // Move company logo images + their clip circles
     var nMap={};allNodes.forEach(function(n){nMap[n.id]=n;});
-    d3.select('#kgRoot').selectAll('image.co-logo').each(function(){
+    d3.select('#kgRoot').selectAll('image.co-logo,circle.co-logo-bg').each(function(){
       var el=d3.select(this);
       var n=nMap[el.attr('data-nid')];
-      if(n){var r=nodeR(n)-1;el.attr('x',n.x-r).attr('y',n.y-r);}
+      if(!n)return;
+      var r=nodeR(n)-1;
+      if(this.tagName==='image'){el.attr('x',n.x-r).attr('y',n.y-r);}
+      else{el.attr('cx',n.x).attr('cy',n.y);}
+      // update clipPath circle
+      var clipId='coclip_'+n.id.replace(/[^a-z0-9]/gi,'_');
+      svgSel.select('#'+clipId+' circle').attr('cx',n.x).attr('cy',n.y);
     });
   }
 
