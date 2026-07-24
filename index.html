@@ -1641,9 +1641,17 @@ function openColFilter(col, btn, event){
     allMissions.forEach(function(m){var t=String(m['_uc_type']||'').trim();if(t)tCount[t]=(tCount[t]||0)+1;});
     options=[{val:'',label:'(All)'}].concat(Object.keys(tCount).sort().map(function(t){return{val:t,label:t+' ('+tCount[t]+')'};}));
   }
+  // Color maps for KG-style dots
+  var dotColor={
+    'Published':'#fde047','Draft':'#fef9c3','In Review':'#fef08a','Archived':'#c8c4b0',
+    'Standard':'#a78bfa','Partner Standard':'#818cf8','Partner AI':'#c084fc',
+    'Prompt-Led':'#f472b6','High Touch Engagement':'#fb923c'
+  };
   drop.innerHTML=options.map(function(opt){
     var isActive=opt.val===curVal;
-    return'<button onclick="selectColFilter(\''+col+'\',\''+opt.val.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:block;width:100%;text-align:left;padding:5px 10px;border:none;background:'+(isActive?'rgba(124,58,237,0.25)':'none')+';color:'+(isActive?'#c4b5fd':'#e2e8f0')+';font-family:Inter,sans-serif;font-size:.78rem;cursor:pointer;border-radius:4px">'+(opt.val===''?'<span style="opacity:.5">⊘</span> ':'')+escHtml(opt.label)+'</button>';
+    var dc=dotColor[opt.val];
+    var dot=dc?'<div style="width:8px;height:8px;border-radius:'+(col==='uctype'?'2':'50')+'px;background:'+dc+';flex-shrink:0;margin-right:6px"></div>':'<span style="width:14px;display:inline-block"></span>';
+    return'<button onclick="selectColFilter(\''+col+'\',\''+opt.val.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:flex;align-items:center;width:100%;text-align:left;padding:5px 8px;border:none;background:'+(isActive?'rgba(124,58,237,0.25)':'none')+';color:'+(isActive?'#c4b5fd':'#e2e8f0')+';font-family:Inter,sans-serif;font-size:.78rem;cursor:pointer;border-radius:4px">'+dot+(opt.val===''?'<span style="opacity:.5">⊘ (All)</span>':escHtml(opt.label))+'</button>';
   }).join('');
   var left=Math.min(rect.left,window.innerWidth-170);
   drop.style.left=left+'px';
@@ -1705,8 +1713,12 @@ init();
           <span>Mission <span id="kg-cnt-mission" style="opacity:0.6;font-size:0.65rem"></span></span>
         </div>
         <!-- Right half: Status dropdown -->
-        <div onclick="kgToggleStatusPicker()" title="Filter by status" style="display:flex;align-items:center;gap:4px;padding:4px 9px;color:#94a3b8;transition:background .15s" onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background=''">
+        <div onclick="kgToggleStatusPicker()" title="Filter by status" style="display:flex;align-items:center;gap:4px;padding:4px 9px;color:#94a3b8;border-right:1px solid #334155;transition:background .15s" onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background=''">
           <span id="kgStatusLabel">Status</span> <span style="font-size:0.7rem">▾</span>
+        </div>
+        <!-- Third segment: Type dropdown -->
+        <div onclick="kgToggleUcTypePicker()" title="Filter by type" style="display:flex;align-items:center;gap:4px;padding:4px 9px;color:#94a3b8;transition:background .15s" onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background=''">
+          <span id="kgUcTypeBtnLabel2">Type</span> <span style="font-size:0.7rem">▾</span>
         </div>
       </div>
       <div id="kgStatusPicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
@@ -1723,7 +1735,14 @@ init();
           <div style="width:9px;height:9px;border-radius:50%;background:#c8c4b0;flex-shrink:0"></div>
           <input type="checkbox" value="Archived" onchange="kgStatusCheck()" style="display:none">Archived</label>
         <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px">
-          <button onclick="kgStatusClear()" style="background:transparent;border:none;color:#475569;font-size:0.72rem;cursor:pointer;padding:0">✕ Clear</button>
+          <button onclick="kgStatusClear()" style="background:transparent;border:none;color:#475569;font-size:0.72rem;cursor:pointer;padding:0">&#x2715; Clear</button>
+        </div>
+      </div>
+      <div id="kgUcTypePicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:220px;max-height:300px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <div id="kgUcTypeList" style="display:flex;flex-direction:column;gap:1px"></div>
+        <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
+          <button onclick="kgUcTypeSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
+          <button onclick="kgUcTypeSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
         </div>
       </div>
     </div>
@@ -1757,19 +1776,6 @@ init();
         <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
           <button onclick="kgIndSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
           <button onclick="kgIndSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
-        </div>
-      </div>
-    </div>
-    <!-- UC Type filter -->
-    <div style="position:relative;display:inline-flex;align-items:center" id="kgUcTypeWrap">
-      <button id="kgUcTypeBtn" class="kg-picker-btn" onclick="kgToggleUcTypePicker()">
-        <span id="kgUcTypeBtnLabel">Type</span> ▾
-      </button>
-      <div id="kgUcTypePicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:220px;max-height:300px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
-        <div id="kgUcTypeList" style="display:flex;flex-direction:column;gap:1px"></div>
-        <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
-          <button onclick="kgUcTypeSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
-          <button onclick="kgUcTypeSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
         </div>
       </div>
     </div>
@@ -3056,19 +3062,24 @@ function kgUpdateUcTypeBtn(){
   var filt=window.KG?KG.getFilt():{ucTypes:new Set()};
   var n=filt.ucTypes.size;
   var total=document.querySelectorAll('#kgUcTypeList [data-uctype]').length;
-  var lbl=document.getElementById('kgUcTypeBtnLabel');
+  var label=(n===0||n===total)?'Type':n+' Types';
+  var lbl1=document.getElementById('kgUcTypeBtnLabel');
+  var lbl2=document.getElementById('kgUcTypeBtnLabel2');
   var btn=document.getElementById('kgUcTypeBtn');
-  if(lbl) lbl.textContent=(n===0||n===total)?'Type':n+' Types';
+  if(lbl1) lbl1.textContent=label;
+  if(lbl2) lbl2.textContent=label;
   if(btn) btn.classList.toggle('active',n>0&&n<total);
 }
 function kgToggleUcTypePicker(){
-  var p=document.getElementById('kgUcTypePicker');
-  p.style.display=p.style.display==='none'?'block':'none';
+  var sp=document.getElementById('kgStatusPicker');
+  var tp=document.getElementById('kgUcTypePicker');
+  if(sp&&sp.style.display!=='none') sp.style.display='none';
+  tp.style.display=tp.style.display==='none'?'block':'none';
 }
 
 // Close pickers when clicking outside
 document.addEventListener('click',function(e){
-  ['kgCatWrap','kgCoWrap','kgCoachWrap','kgSvcWrap','kgIndWrap','kgStatusWrap','kgUcTypeWrap'].forEach(function(id){
+  ['kgCatWrap','kgCoWrap','kgCoachWrap','kgSvcWrap','kgIndWrap','kgStatusWrap'].forEach(function(id){
     var wrap=document.getElementById(id);
     if(!wrap||wrap.contains(e.target))return;
     var picker=wrap.querySelector('[id$="Picker"]');
@@ -3076,8 +3087,10 @@ document.addEventListener('click',function(e){
   });
 });
 function kgToggleStatusPicker(){
-  var p=document.getElementById('kgStatusPicker');
-  p.style.display=p.style.display==='none'?'block':'none';
+  var sp=document.getElementById('kgStatusPicker');
+  var tp=document.getElementById('kgUcTypePicker');
+  if(tp&&tp.style.display!=='none') tp.style.display='none';
+  sp.style.display=sp.style.display==='none'?'block':'none';
 }
 function kgStatusCheck(){
   document.querySelectorAll('#kgStatusPicker label').forEach(function(lbl){
