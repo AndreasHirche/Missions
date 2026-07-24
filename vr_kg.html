@@ -21,33 +21,22 @@ canvas{display:block}
 </style>
 </head>
 <body>
-<div id="info">
-  Missions Knowledge Graph — VR &nbsp;|&nbsp;
-  <a href="index.html">← Back to Dashboard</a>
-</div>
+<div id="info">Missions Knowledge Graph — VR &nbsp;|&nbsp;<a href="index.html">← Back</a> &nbsp;|&nbsp;<a href="https://www.oculus.com/open_url/?url=https%3A%2F%2Fandreashirche.github.io%2FMissions%2Fvr_kg.html" title="Send to Meta Quest Browser (requires Meta login)">📱→🥽 Open in Quest</a></div>
 <div id="vr-btn-wrap"></div>
 <div id="loading"><div class="spinner"></div><div>Loading graph data…</div></div>
 
 <script src="three.min.js"></script>
 <script src="3d-force-graph.min.js"></script>
 <script>
-// ── Color palette matching the dashboard KG ──────────────────────────────────
-var KG_COLORS = {
-  mission:    '#fde047',   // yellow
-  category:   '#d1d5db',   // light gray
-  coach:      '#e879f9',   // magenta
-  tag:        '#fbbf24',   // amber
-  company:    '#166534',   // dark green
-  focus:      '#f97316',   // orange
-  service:    '#60a5fa',   // blue
-  svcopt:     '#60a5fa',   // blue
-  svcpartner: '#a3e635',   // yellow-green
-};
-var MOVE_SPEED = 1.5;
-var TURN_SPEED = 0.025;
-var DEADZONE   = 0.15;
+var KG_COLORS={mission:'#fde047',category:'#d1d5db',coach:'#e879f9',tag:'#fbbf24',
+  company:'#4ade80',focus:'#f97316',service:'#60a5fa',svcopt:'#93c5fd',svcpartner:'#38bdf8'};
+var MOVE_SPEED=1.5, TURN_SPEED=0.025, DEADZONE=0.15;
 
-// ── Load data from JSON files ─────────────────────────────────────────────────
+// ── State ──────────────────────────────────────────────────────────────────────
+var vis={mission:1,coach:1,company:1,service:1,category:1};
+var filterChan='';
+var allNodes=[], allLinks=[], graphInst=null;
+
 var UC_SERVICES={}, UC_DC_IDS={}, UC_DETAILS={};
 Promise.all([
   fetch('uc_services.json').then(function(r){return r.ok?r.json():{};}).catch(function(){return {};}),
@@ -55,284 +44,512 @@ Promise.all([
   fetch('uc_details.json').then(function(r){return r.ok?r.json():{};}).catch(function(){return {};})
 ]).then(function(results){
   UC_SERVICES=results[0]; UC_DC_IDS=results[1]; UC_DETAILS=results[2];
+  // Load missions from sessionStorage (set by opener) or window.opener
+  var stored=sessionStorage.getItem('vr_kg_missions');
+  if(stored){try{window._vrMissions=JSON.parse(stored);}catch(e){}}
+  else if(window.opener&&window.opener.allMissions){window._vrMissions=window.opener.allMissions;}
   document.getElementById('loading').innerHTML='<div class="spinner"></div><div>Building graph…</div>';
-  setTimeout(buildGraph, 100);
+  setTimeout(buildGraph,100);
 });
 
-// ── Build graph data from embedded CSV or URL params ──────────────────────────
+// ── Build graph data ───────────────────────────────────────────────────────────
 function buildGraph(){
-  // Try to get missions from parent window (if opened from dashboard)
-  var missions = (window.opener && window.opener.allMissions) || [];
-
-  if(!missions.length){
-    // Fallback: build minimal graph from UC_DETAILS
-    buildFromDetails();
-    return;
-  }
-
-  var CAT_NORM={'database and data management':'DB & Data','application development and automation':'App Dev & Auto','digital process automation':'Digital Process Auto','data and analytics':'Data & Analytics','integration suite':'Integration Suite','inegration suite':'Integration Suite','generative ai':'Generative AI','artificial intelligence':'AI','ai core':'AI'};
+  var missions=window._vrMissions||[];
+  if(!missions.length){buildFromDetails();return;}
+  var CAT_NORM={'database and data management':'DB & Data Mgmt',
+    'application development and automation':'App Dev & Auto',
+    'digital process automation':'Digital Process Auto',
+    'data and analytics':'Data & Analytics',
+    'integration suite':'Integration Suite','inegration suite':'Integration Suite',
+    'generative ai':'Generative AI','artificial intelligence':'AI','ai core':'AI'};
   function nc(c){return CAT_NORM[(c||'').toLowerCase()]||c;}
   function getDcId(m){
     var u=String(m['UCR ID']||'');
-    if(UC_DC_IDS[u]) return UC_DC_IDS[u];
+    if(UC_DC_IDS[u])return UC_DC_IDS[u];
     var mm=String(m['Link to Discovery Center']||'').match(/missiondetail\/(\d+)/);
     return mm?mm[1]:null;
   }
-
-  var nodes={}, links=[];
+  var nodes={},links=[];
   function node(id,label,type,extra){
-    if(!nodes[id]) nodes[id]={id:id,label:label,type:type,...(extra||{})};
+    if(!nodes[id])nodes[id]=Object.assign({id:id,label:label,type:type,count:0},extra||{});
     return nodes[id];
   }
-
   missions.forEach(function(m){
     var mid='m:'+m['UCR ID'];
-    var status=(m['STATUS']||'').toLowerCase();
-    node(mid, m['Mission Name']||m['UCR ID'], 'mission', {status:status});
-
-    var cat=nc((m['Category']||'Other').trim());
-    node('cat:'+cat, cat, 'category').count=(node('cat:'+cat).count||0)+1;
-    links.push({source:mid,target:'cat:'+cat,rel:'category'});
-
-    var coach=(m['Coach name(s)']||'').trim();
-    if(coach){
-      node('coach:'+coach, coach, 'coach').count=(node('coach:'+coach).count||0)+1;
-      links.push({source:mid,target:'coach:'+coach,rel:'coach'});
-    }
-
-    var ucrId=m['UCR ID']||'';
-    var det=UC_DETAILS[ucrId]||{};
-    (det.focusTopics||[]).forEach(function(ft){
-      if(!ft)return;
-      node('ft:'+ft, ft, 'focus').count=(node('ft:'+ft).count||0)+1;
-      links.push({source:mid,target:'ft:'+ft,rel:'focus'});
+    var channels=String(m['Published Channels']||'').trim();
+    var company=String(m['Authoring Company']||'').trim();
+    node(mid,m['Mission Name']||m['UCR ID'],'mission',{
+      status:(m['STATUS']||'').toLowerCase(),
+      company:company,
+      channels:channels
     });
-
+    var cat=nc((m['Category']||'Other').trim());
+    node('cat:'+cat,cat,'category').count++;
+    links.push({source:mid,target:'cat:'+cat,rel:'category'});
+    var coach=String(m['Coach name(s)']||'').trim();
+    if(coach){node('coach:'+coach,coach,'coach').count++;links.push({source:mid,target:'coach:'+coach,rel:'coach'});}
+    if(company){node('co:'+company,company,'company').count++;links.push({source:mid,target:'co:'+company,rel:'company'});}
+    var det=UC_DETAILS[m['UCR ID']||'']||{};
     var dcId=getDcId(m);
-    var svcs=dcId?UC_SERVICES[dcId]||[]:[];
-    svcs.forEach(function(s){
+    (dcId?UC_SERVICES[dcId]||[]:[]).forEach(function(s){
       var name=typeof s==='string'?s:s.n;
-      var cat2=typeof s==='string'?'':s.c||'';
+      var cl=(typeof s==='string'?'':s.c||'').toLowerCase();
       var opt=typeof s==='string'?false:!!s.o;
-      var cl2=cat2.toLowerCase();
-      var ntype=opt?'svcopt':(cl2.includes('partner')||cl2.includes('successfactor')||cl2.includes('amazon')||cl2.includes('azure')||cl2.includes('google')?'svcpartner':'service');
+      var nt=opt?'svcopt':(cl.includes('partner')||cl.includes('successfactor')||cl.includes('amazon')||cl.includes('azure')||cl.includes('google')?'svcpartner':'service');
       if(!name)return;
-      node('svc:'+name, name, ntype).count=(node('svc:'+name).count||0)+1;
-      links.push({source:mid,target:'svc:'+name,rel:'service'});
+      node('svc:'+name,name,nt).count++;links.push({source:mid,target:'svc:'+name,rel:'service'});
     });
   });
-
-  launchVR(Object.values(nodes), links, missions.length);
+  allNodes=Object.values(nodes); allLinks=links;
+  launchVR(missions.length);
 }
 
 function buildFromDetails(){
-  // Minimal graph from UC_DETAILS focus topics only
-  var nodes={}, links=[];
-  var count=0;
+  var nodes={},links=[];
   Object.entries(UC_DETAILS).forEach(function(e){
-    var ucr=e[0], det=e[1];
+    var ucr=e[0],det=e[1];
     var mid='m:'+ucr;
-    if(!nodes[mid]){nodes[mid]={id:mid,label:ucr,type:'mission'};count++;}
-    (det.focusTopics||[]).forEach(function(ft){
-      var fid='ft:'+ft;
-      if(!nodes[fid])nodes[fid]={id:fid,label:ft,type:'focus',count:0};
-      nodes[fid].count++;
-      links.push({source:mid,target:fid,rel:'focus'});
-    });
+    if(!nodes[mid])nodes[mid]={id:mid,label:ucr,type:'mission',count:0,channels:'',company:''};
   });
-  document.getElementById('loading').style.display='none';
-  launchVR(Object.values(nodes), links, count);
+  allNodes=Object.values(nodes); allLinks=links;
+  launchVR(allNodes.filter(function(n){return n.type==='mission';}).length);
 }
 
-// ── Launch VR ─────────────────────────────────────────────────────────────────
-function launchVR(allNodes, allLinks, missionCount){
-  document.getElementById('loading').style.display='none';
+// ── Filtered graph data ────────────────────────────────────────────────────────
+function typeKey(n){return (n.type==='svcopt'||n.type==='svcpartner')?'service':n.type;}
 
+function filteredData(){
+  var keep=allNodes.filter(function(n){
+    if(!vis[typeKey(n)])return false;
+    if(filterChan&&n.type==='mission'){
+      var ch=n.channels||'';
+      if(!ch.split(',').map(function(c){return c.trim();}).includes(filterChan))return false;
+    }
+    return true;
+  });
+  var nids=new Set(keep.map(function(n){return n.id;}));
+  var klinks=allLinks.filter(function(l){
+    var s=l.source&&l.source.id||l.source, t=l.target&&l.target.id||l.target;
+    return nids.has(s)&&nids.has(t)&&(vis[l.rel]||0);
+  });
+  return{nodes:keep.map(function(n){return Object.assign({},n);}),links:klinks};
+}
+
+// ── Launch ────────────────────────────────────────────────────────────────────
+function launchVR(missionCount){
+  document.getElementById('loading').style.display='none';
   var wrap=document.createElement('div');
   wrap.style.cssText='position:fixed;inset:0';
   document.body.appendChild(wrap);
-
   if(typeof ForceGraph3D==='undefined'){
-    wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f87171;font-family:system-ui;font-size:1rem">3D engine not available — open via http://localhost:8080/vr_kg.html</div>';
+    wrap.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f87171;font-family:system-ui">3D engine not available — use localhost:8080</div>';
     return;
   }
-
-  // Build graph
-  var gData={
-    nodes: allNodes.map(function(n){return Object.assign({},n);}),
-    links: allLinks.map(function(l){return{source:l.source?.id||l.source,target:l.target?.id||l.target,rel:l.rel};})
-  };
-
   function nodeColor(n){
     if(n.type==='mission'){
-      var sc={'published':'#fde047','draft':'#fef9c3','retired':'#94a3b8','in progress':'#fef08a'};
+      var sc={published:'#fde047','in progress':'#fef08a',draft:'#fef9c3',retired:'#94a3b8'};
       return sc[n.status||'']||'#fde047';
     }
     return KG_COLORS[n.type]||'#94a3b8';
   }
-  function nodeSize(n){
-    if(n.type==='mission') return 2;
-    return Math.min(6, 2+Math.sqrt(n.count||0)*0.8);
-  }
+  function nodeSize(n){return n.type==='mission'?2:Math.min(8,2+Math.sqrt(n.count||0)*0.9);}
 
-  var graph = ForceGraph3D({antialias:true, alpha:true})(wrap)
+  // Load ALL nodes/links once — positions never reset
+  // nodeVisibility closes over live vis/filterChan — ForceGraph3D re-evaluates every frame
+  graphInst=ForceGraph3D({antialias:true,alpha:true})(wrap)
     .width(window.innerWidth).height(window.innerHeight)
     .backgroundColor('rgba(0,0,0,0)')
-    .graphData(gData)
-    .nodeColor(nodeColor)
-    .nodeVal(nodeSize)
-    .nodeLabel(function(n){return n.label+(n.status?' · '+n.status:'')+(n.count?' ('+n.count+')':'');})
-    .nodeResolution(8)
+    .graphData({
+      nodes: allNodes.map(function(n){return Object.assign({},n);}),
+      links: allLinks.map(function(l){return {source:l.source&&l.source.id||l.source,target:l.target&&l.target.id||l.target,rel:l.rel};})
+    })
+    .nodeColor(nodeColor).nodeVal(nodeSize).nodeResolution(8)
+    .nodeLabel(function(n){return n.label+(n.count?' ('+n.count+')':'');})
+    .nodeVisibility(function(n){
+      if(filterChan&&n.type==='mission'){
+        var ch=n.channels||'';
+        if(!ch.split(',').map(function(c){return c.trim();}).includes(filterChan))return false;
+      }
+      return !!vis[typeKey(n)];
+    })
+    .linkVisibility(function(l){return !!(vis[l.rel]||0);})
     .linkColor(function(l){return KG_COLORS[l.rel]||'#334155';})
-    .linkOpacity(0.15)
-    .linkWidth(0.3)
-    .onNodeHover(function(n){wrap.style.cursor=n?'pointer':'default';});
+    .linkOpacity(0.15).linkWidth(0.3)
+    .onNodeHover(function(n){
+      wrap.style.cursor=n?'pointer':'default';
+      if(n){showHoverLabel(n,new T.Vector3(n.x||0,n.y||0,n.z||0));}
+      else{removeHoverLabel();}
+    });
 
-  // Tune forces
-  var cf=graph.d3Force('charge'), lf=graph.d3Force('link');
-  if(cf&&cf.strength) cf.strength(function(n){return n.type==='category'?-120:n.type==='mission'?-15:-80;});
-  if(lf&&lf.distance) lf.distance(function(l){return l.rel==='category'?80:l.rel==='focus'?60:50;});
+  var cf=graphInst.d3Force('charge'),lf=graphInst.d3Force('link');
+  if(cf&&cf.strength)cf.strength(function(n){return n.type==='category'?-120:n.type==='mission'?-15:-80;});
+  if(lf&&lf.distance)lf.distance(function(l){return l.rel==='category'?80:l.rel==='focus'?60:50;});
+  graphInst.d3AlphaMin(0).d3AlphaDecay(0).cooldownTime(Infinity).cooldownTicks(Infinity);
 
-  var renderer=graph.renderer(), scene=null, camera=null;
-
-  // ── WebXR setup ────────────────────────────────────────────────────────────
+  var renderer=graphInst.renderer();
   renderer.xr.enabled=true;
-
-  var THREE_=window.THREE;
-  if(!THREE_){wrap.innerHTML='<div style="color:#f87171;padding:20px">THREE not available</div>';return;}
+  var T=window.THREE;
+  if(!T)return;
 
   // VR Button
   var btn=document.createElement('button');
   btn.textContent='Enter VR';
   btn.style.cssText='padding:12px 28px;border-radius:8px;border:2px solid #7c3aed;background:rgba(6,7,15,0.9);color:#e2e8f0;font-size:1rem;font-family:system-ui;cursor:pointer;font-weight:600';
   document.getElementById('vr-btn-wrap').appendChild(btn);
-  btn.onclick=function(){renderer.xr.getSession()?null:
-    navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor']})
-    .then(function(s){renderer.xr.setSession(s);btn.textContent='Exit VR';
-      s.addEventListener('end',function(){btn.textContent='Enter VR';});});
+  btn.onclick=function(){
+    navigator.xr&&navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor']})
+    .then(function(s){
+      renderer.xr.setSession(s);
+      btn.textContent='Exit VR';
+      s.addEventListener('end',function(){btn.textContent='Enter VR';});
+    });
   };
 
-  // ── Camera rig ─────────────────────────────────────────────────────────────
-  function getScene(){return graph.scene&&graph.scene();}
-  function getCamera(){return graph.camera&&graph.camera();}
+  var _simLayout=null;
+  var _xrWasPresenting=false;
 
+  var scene,camera,rig=new T.Group();
+  rig.position.set(0,20,280);
+  var exitPanel=null,controlPanel=null,hintPanel=null,titlePanel=null;
   var rigReady=false;
-  var rig=new THREE_.Group(); rig.position.set(0,20,280);
-  var exitPanel=null, hintPanel=null;
 
-  function initRig(){
-    var s=getScene(), c=getCamera();
-    if(!s||!c||rigReady)return;
-    rigReady=true; scene=s; camera=c;
-    s.add(rig); rig.add(c);
-    c.far=50000; c.updateProjectionMatrix();
-    s.add(new THREE_.AmbientLight(0xffffff,1.2));
+  // ── Build control panel: group toggles + channel filter ──────────────────
+  function buildControlPanel(){
+    var toggleDefs=[
+      {key:'mission',  label:'Mission',           color:'#fde047'},
+      {key:'service',  label:'Service & Partner', color:'#60a5fa'},
+      {key:'coach',    label:'Coach',             color:'#e879f9'},
+      {key:'category', label:'Category',          color:'#d1d5db'},
+      {key:'company',  label:'Company',           color:'#4ade80'},
+    ];
+    // Collect channels from mission nodes
+    var chanSet={};
+    allNodes.forEach(function(n){
+      if(n.type==='mission'&&n.channels){
+        n.channels.split(',').forEach(function(c){c=c.trim();if(c)chanSet[c]=(chanSet[c]||0)+1;});
+      }
+    });
+    var chans=Object.keys(chanSet).sort(function(a,b){return chanSet[b]-chanSet[a];});
 
-    // Fractal-like background
-    var bg=new THREE_.Mesh(new THREE_.SphereGeometry(2000,32,32),
-      new THREE_.MeshBasicMaterial({color:0x02040f,side:THREE_.BackSide}));
-    s.add(bg);
+    var W=480, lh=44, pad=16, fz=19, fzS=16;
+    var rows=toggleDefs.length;
+    var H=pad + lh            // title
+      + rows*lh + 12          // toggles
+      + lh                    // channel section header
+      + (chans.length+1)*lh   // channel items + "All"
+      + pad;
 
-    // Rocket
-    addRocket(s);
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    var ctx=cv.getContext('2d');
+    ctx.fillStyle='rgba(6,7,15,0.97)';
+    if(ctx.roundRect){ctx.roundRect(0,0,W,H,14);ctx.fill();}else{ctx.fillRect(0,0,W,H);}
+    ctx.strokeStyle='#7c3aed';ctx.lineWidth=2;
+    if(ctx.roundRect){ctx.roundRect(1,1,W-2,H-2,13);ctx.stroke();}else{ctx.strokeRect(1,1,W-2,H-2);}
 
-    // Panels
-    exitPanel=makePanel('✕  EXIT VR\nAim + trigger',{w:240,h:90,border:'#f87171',bg:'rgba(10,5,15,0.95)'},0.09);
-    exitPanel.position.set(28,-6,-45); rig.add(exitPanel);
-
-    hintPanel=makePanel('VR Controls\nLeft stick: move · Right stick: turn\nRight trigger: point & select',{w:480,h:110,border:'#fde047',bg:'rgba(10,5,15,0.95)'},0.09);
-    hintPanel.position.set(0,40,150); s.add(hintPanel);
-    setTimeout(function(){if(hintPanel)hintPanel.visible=false;},8000);
+    var hits=[], y=pad;
 
     // Title
-    var mc=allNodes.filter(function(n){return n.type==='mission';}).length;
-    var svcC=allNodes.filter(function(n){return n.type==='service'||n.type==='svcpartner'||n.type==='svcopt';}).length;
-    var titlePanel=makePanel('Missions Knowledge Graph\n'+mc+' missions · '+svcC+' services · '+allLinks.length+' connections',{w:560,h:90,border:'#7c3aed',bg:'rgba(10,5,15,0.95)'},0.1);
-    titlePanel.position.set(0,140,0); s.add(titlePanel);
+    ctx.fillStyle='#a78bfa';ctx.font='bold 21px system-ui';ctx.textAlign='center';
+    ctx.fillText('Graph Settings',W/2,y+20);
+    y+=lh;
 
-    // Controllers
+    // ── Toggles ──────────────────────────────────────────────────────────
+    toggleDefs.forEach(function(td){
+      var on=!!vis[td.key];
+      // pill background
+      ctx.fillStyle=on?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.02)';
+      if(ctx.roundRect){ctx.roundRect(12,y+4,W-24,lh-8,8);ctx.fill();}else{ctx.fillRect(12,y+4,W-24,lh-8);}
+      // circle indicator
+      ctx.beginPath();ctx.arc(36,y+lh/2,10,0,Math.PI*2);
+      ctx.fillStyle=on?td.color:'#1e293b';ctx.fill();
+      ctx.strokeStyle=on?td.color:'#475569';ctx.lineWidth=2;ctx.stroke();
+      // checkmark when on
+      if(on){
+        ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(30,y+lh/2);ctx.lineTo(34,y+lh/2+4);ctx.lineTo(42,y+lh/2-4);ctx.stroke();
+      }
+      // label
+      ctx.fillStyle=on?'#f1f5f9':'#64748b';
+      ctx.font=(on?'bold ':'')+fz+'px system-ui';ctx.textAlign='left';
+      ctx.fillText(td.label,56,y+lh/2+7);
+      // ON/OFF tag
+      ctx.fillStyle=on?'#4ade80':'#475569';ctx.font='bold 13px system-ui';ctx.textAlign='right';
+      ctx.fillText(on?'ON':'OFF',W-20,y+lh/2+5);
+      hits.push({type:'toggle',key:td.key,x1:12,y1:y+4,x2:W-12,y2:y+lh-4});
+      y+=lh;
+    });
+    y+=12;
+
+    // ── Channel filter ────────────────────────────────────────────────────
+    ctx.strokeStyle='#1e293b';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(16,y+2);ctx.lineTo(W-16,y+2);ctx.stroke();
+    ctx.fillStyle='#64748b';ctx.font='bold '+fzS+'px system-ui';ctx.textAlign='left';
+    ctx.fillText('Channel Filter',16,y+fzS+4);
+    y+=lh;
+
+    // "All" option
+    var allOn=filterChan==='';
+    ctx.fillStyle=allOn?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.02)';
+    if(ctx.roundRect){ctx.roundRect(12,y+4,W-24,lh-8,8);ctx.fill();}else{ctx.fillRect(12,y+4,W-24,lh-8);}
+    ctx.fillStyle=allOn?'#e2e8f0':'#64748b';
+    ctx.font=(allOn?'bold ':'')+fz+'px system-ui';ctx.textAlign='left';
+    ctx.fillText('All Channels',20,y+lh/2+7);
+    if(allOn){ctx.fillStyle='#4ade80';ctx.font='bold 13px system-ui';ctx.textAlign='right';ctx.fillText('✓',W-20,y+lh/2+5);}
+    hits.push({type:'chan',value:'',x1:12,y1:y+4,x2:W-12,y2:y+lh-4});
+    y+=lh;
+
+    chans.forEach(function(ch){
+      var on=filterChan===ch;
+      ctx.fillStyle=on?'rgba(56,189,248,0.12)':'rgba(255,255,255,0.02)';
+      if(ctx.roundRect){ctx.roundRect(12,y+4,W-24,lh-8,8);ctx.fill();}else{ctx.fillRect(12,y+4,W-24,lh-8);}
+      ctx.fillStyle=on?'#38bdf8':'#94a3b8';
+      ctx.font=(on?'bold ':'')+fz+'px system-ui';ctx.textAlign='left';
+      var cnt=chanSet[ch]||0;
+      ctx.fillText(ch+(cnt?' ('+cnt+')':''),20,y+lh/2+7);
+      if(on){ctx.fillStyle='#38bdf8';ctx.font='bold 13px system-ui';ctx.textAlign='right';ctx.fillText('✓',W-20,y+lh/2+5);}
+      hits.push({type:'chan',value:ch,x1:12,y1:y+4,x2:W-12,y2:y+lh-4});
+      y+=lh;
+    });
+    y+=pad;
+
+    var tex=new T.CanvasTexture(cv);
+    var sc=0.1;
+    var mesh=new T.Mesh(new T.PlaneGeometry(W*sc,H*sc),
+      new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide}));
+    mesh.userData={W:W,H:H,hits:hits,sc:sc};
+    return mesh;
+  }
+
+  function refreshGraph(){
+    // Directly toggle .visible on Three.js objects — avoids ForceGraph3D rebuild
+    if(graphInst&&scene){
+      scene.traverse(function(obj){
+        if(!obj.__graphObjType)return;
+        if(obj.__graphObjType==='node'){
+          var n=obj.__data;
+          if(!n)return;
+          var show=!!vis[typeKey(n)];
+          if(show&&filterChan&&n.type==='mission'){
+            var ch=n.channels||'';
+            show=ch.split(',').map(function(c){return c.trim();}).includes(filterChan);
+          }
+          obj.visible=show;
+        } else if(obj.__graphObjType==='link'){
+          var l=obj.__data;
+          if(!l)return;
+          obj.visible=!!(vis[l.rel]||0);
+        }
+      });
+      // Reheat simulation so visible nodes re-settle
+      if(graphInst&&graphInst.d3ReheatSimulation) graphInst.d3ReheatSimulation();
+    }
+    // Rebuild panel texture
+    if(controlPanel){
+      var pos=controlPanel.position.clone(),q=controlPanel.quaternion.clone();
+      var parent=controlPanel.parent;
+      if(parent)parent.remove(controlPanel);
+      controlPanel=buildControlPanel();
+      controlPanel.position.copy(pos);
+      controlPanel.quaternion.copy(q);
+      if(parent)parent.add(controlPanel);
+    }
+  }
+
+  function handlePanelClick(panel,uv){
+    var W=panel.userData.W, H=panel.userData.H;
+    var px=uv.x*W, py=(1-uv.y)*H;
+    var hits=panel.userData.hits||[];
+    for(var i=0;i<hits.length;i++){
+      var h=hits[i];
+      if(px>=h.x1&&px<=h.x2&&py>=h.y1&&py<=h.y2){
+        if(h.type==='toggle'){
+          vis[h.key]=!vis[h.key];
+          if(h.key==='service'){vis.svcopt=vis.service;vis.svcpartner=vis.service;}
+        } else if(h.type==='chan'){
+          filterChan=filterChan===h.value&&h.value!==''?'':h.value;
+        }
+        refreshGraph();
+        break;
+      }
+    }
+  }
+
+  // ── Init scene ────────────────────────────────────────────────────────────
+  function initRig(){
+    var s=graphInst.scene&&graphInst.scene();
+    var c=graphInst.camera&&graphInst.camera();
+    if(!s||!c||rigReady)return;
+    rigReady=true;scene=s;camera=c;
+    s.add(rig);rig.add(c);
+    c.far=50000;c.updateProjectionMatrix();
+    s.add(new T.AmbientLight(0xffffff,1.2));
+    s.add(new T.Mesh(new T.SphereGeometry(2000,16,16),new T.MeshBasicMaterial({color:0x02040f,side:T.BackSide})));
+    addRocket(s);
+
+    // Title panel (world-space, billboard)
+    var mc=allNodes.filter(function(n){return n.type==='mission';}).length;
+    var sc2=allNodes.filter(function(n){return n.type==='service'||n.type==='svcpartner'||n.type==='svcopt';}).length;
+    titlePanel=makeLabelMesh('Missions KG — '+mc+' missions · '+sc2+' services',{w:580,h:60,border:'#7c3aed',scale:0.09});
+    titlePanel.position.set(0,145,0);s.add(titlePanel);
+
+    // Control panel — left of center, rotated 20° to face player's gaze
+    controlPanel=buildControlPanel();
+    controlPanel.position.set(-40,4,-50);
+    controlPanel.rotation.y=Math.PI/9; // ~20° toward center
+    rig.add(controlPanel);
+
+    // Exit button — right side of rig
+    exitPanel=makeLabelMesh('✕  EXIT VR',{w:220,h:72,border:'#f87171',color:'#f87171',bold:true,sz:24,sub:'Aim + trigger',subColor:'#64748b',scale:0.085});
+    exitPanel.position.set(32,-6,-50);rig.add(exitPanel);
+
+    // Hint
+    hintPanel=makeLabelMesh('',{w:460,h:170,border:'#fde047',scale:0.085,lines:[
+      {t:'VR Controls',c:'#fde047',bold:true,sz:21},
+      {t:'Left stick → move / strafe',c:'#e2e8f0',sz:17},
+      {t:'Right stick → turn / up-down',c:'#e2e8f0',sz:17},
+      {t:'Trigger on panel → toggle/filter',c:'#86efac',sz:17},
+      {t:'Trigger EXIT → leave VR',c:'#94a3b8',sz:15},
+    ]});
+    hintPanel.position.set(0,42,160);s.add(hintPanel);
+    setTimeout(function(){if(hintPanel)hintPanel.visible=false;},12000);
+
     setupControllers(s);
   }
 
-  // Retry until scene ready
-  var initInterval=setInterval(function(){if(getScene()){initRig();clearInterval(initInterval);}},200);
+  var initIv=setInterval(function(){
+    if(graphInst.scene&&graphInst.scene()){initRig();clearInterval(initIv);}
+  },200);
 
-  // ── Canvas label helper ────────────────────────────────────────────────────
-  function makePanel(text, opts, scale){
-    var lines=text.split('\n');
-    var W=opts.w||400, lh=34, pad=16;
-    var H=opts.h||(lines.length*lh+pad*2);
-    var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  // ── Simple label mesh factory ─────────────────────────────────────────────
+  function makeLabelMesh(text,opts){
+    var W=opts.w||400, H=opts.h||60, sc=opts.scale||0.08;
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
     var ctx=cv.getContext('2d');
-    ctx.fillStyle=opts.bg||'rgba(10,5,15,0.92)';
-    if(ctx.roundRect)ctx.roundRect(0,0,W,H,12); else ctx.rect(0,0,W,H);
-    ctx.fill();
-    ctx.strokeStyle=opts.border||'#7c3aed'; ctx.lineWidth=2;
-    if(ctx.roundRect)ctx.roundRect(1,1,W-2,H-2,11); else ctx.rect(1,1,W-2,H-2);
-    ctx.stroke();
-    lines.forEach(function(line,i){
-      ctx.fillStyle=i===0?'#f1f5f9':'#94a3b8';
-      ctx.font=(i===0?'bold ':'')+'20px system-ui,sans-serif';
+    ctx.fillStyle='rgba(6,7,15,0.95)';
+    if(ctx.roundRect){ctx.roundRect(0,0,W,H,12);ctx.fill();}else{ctx.fillRect(0,0,W,H);}
+    ctx.strokeStyle=opts.border||'#7c3aed';ctx.lineWidth=2;
+    if(ctx.roundRect){ctx.roundRect(1,1,W-2,H-2,11);ctx.stroke();}else{ctx.strokeRect(1,1,W-2,H-2);}
+    if(opts.lines){
+      var lh=opts.lh||30;
+      opts.lines.forEach(function(l,i){
+        ctx.fillStyle=l.c||'#e2e8f0';
+        ctx.font=(l.bold?'bold ':'')+((l.sz||18))+'px system-ui';
+        ctx.textAlign='center';
+        ctx.fillText(l.t,W/2,14+(l.sz||18)+(i*lh),W-20);
+      });
+    } else {
+      ctx.fillStyle=opts.color||'#e2e8f0';
+      ctx.font=(opts.bold?'bold ':'')+(opts.sz||20)+'px system-ui';
       ctx.textAlign='center';
-      ctx.fillText(line, W/2, pad+20+i*lh);
-    });
-    var tex=new THREE_.CanvasTexture(cv);
-    var mat=new THREE_.MeshBasicMaterial({map:tex,transparent:true,side:THREE_.DoubleSide});
-    return new THREE_.Mesh(new THREE_.PlaneGeometry(W*(scale||0.08),H*(scale||0.08)),mat);
+      ctx.fillText(text,W/2,H/2+7);
+      if(opts.sub){ctx.fillStyle=opts.subColor||'#94a3b8';ctx.font='15px system-ui';ctx.fillText(opts.sub,W/2,H/2+22);}
+    }
+    var tex=new T.CanvasTexture(cv);
+    return new T.Mesh(new T.PlaneGeometry(W*sc,H*sc),new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide}));
   }
 
-  // ── Rocket ─────────────────────────────────────────────────────────────────
+  // ── Rocket ────────────────────────────────────────────────────────────────
   function addRocket(s){
-    var M=THREE_.MeshBasicMaterial;
-    var rk=new THREE_.Group();
-    rk.add(new THREE_.Mesh(new THREE_.CapsuleGeometry(2.5,9,8,16),new M({color:0xbcc8d4})));
-    var nose=new THREE_.Mesh(new THREE_.ConeGeometry(2.5,5,16),new M({color:0x1d4ed8}));
-    nose.position.y=9.5; rk.add(nose);
-    for(var i=0;i<3;i++){var pv=new THREE_.Group();pv.rotation.y=(i/3)*Math.PI*2;var fin=new THREE_.Mesh(new THREE_.BoxGeometry(1,5,3.5),new M({color:0x3b82f6}));fin.position.set(3.5,-7,0);pv.add(fin);rk.add(pv);}
-    var flameMat=new M({color:0xf97316,transparent:true,opacity:0.9});
-    var flame=new THREE_.Mesh(new THREE_.ConeGeometry(1.8,5,10),flameMat);
-    flame.position.y=-9.5; flame.rotation.z=Math.PI; rk.add(flame);
-    var wr=new THREE_.Mesh(new THREE_.TorusGeometry(0.8,0.2,8,16),new M({color:0x94a3b8}));
-    wr.position.set(2.5,1.5,0); wr.rotation.y=Math.PI/2; rk.add(wr);
+    var M=T.MeshBasicMaterial,rk=new T.Group();
+    rk.add(new T.Mesh(new T.CapsuleGeometry(2.5,9,8,16),new M({color:0xbcc8d4})));
+    var nose=new T.Mesh(new T.ConeGeometry(2.5,5,16),new M({color:0x1d4ed8}));nose.position.y=9.5;rk.add(nose);
+    for(var i=0;i<3;i++){var pv=new T.Group();pv.rotation.y=(i/3)*Math.PI*2;var fin=new T.Mesh(new T.BoxGeometry(1,5,3.5),new M({color:0x3b82f6}));fin.position.set(3.5,-7,0);pv.add(fin);rk.add(pv);}
+    var fm=new M({color:0xf97316,transparent:true,opacity:0.9});
+    var flame=new T.Mesh(new T.ConeGeometry(1.8,5,10),fm);flame.position.y=-9.5;flame.rotation.z=Math.PI;rk.add(flame);
     rk.rotation.x=-Math.PI/2;
-    var orbit=new THREE_.Group(); orbit.rotation.x=0.4; orbit.rotation.z=0.3;
-    rk.position.set(220,0,0); orbit.add(rk); s.add(orbit);
-    var tick=0;
-    (function anim(){requestAnimationFrame(anim);orbit.rotation.y+=0.006;flameMat.opacity=0.7+0.2*Math.sin(tick+=0.12);})();
+    var orbit=new T.Group();orbit.rotation.x=0.4;orbit.rotation.z=0.3;rk.position.set(220,0,0);orbit.add(rk);s.add(orbit);
+    // Store on scene so animation loop can drive it (requestAnimationFrame doesn't run in WebXR)
+    s._rocketOrbit=orbit;s._rocketFlame=fm;s._rocketTick=0;
   }
 
-  // ── Controllers ────────────────────────────────────────────────────────────
-  var raycaster=new THREE_.Raycaster(); raycaster.far=500;
-  var worldPos=new THREE_.Vector3(), worldQuat=new THREE_.Quaternion(), rayDir=new THREE_.Vector3();
+  // ── Controllers ───────────────────────────────────────────────────────────
+  var rc=new T.Raycaster();rc.far=500;
+  var wp=new T.Vector3(),wq=new T.Quaternion(),rd=new T.Vector3();
+  var hoverLabel=null, hoverLabelCtrl=null;
+
+  function makeHoverLabel(text,color){
+    var W=520, H=72;
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    var ctx=cv.getContext('2d');
+    ctx.fillStyle='rgba(6,7,15,0.92)';
+    if(ctx.roundRect){ctx.roundRect(0,0,W,H,10);ctx.fill();}else{ctx.fillRect(0,0,W,H);}
+    ctx.strokeStyle=color||'#7c3aed';ctx.lineWidth=2;
+    if(ctx.roundRect){ctx.roundRect(1,1,W-2,H-2,9);ctx.stroke();}else{ctx.strokeRect(1,1,W-2,H-2);}
+    ctx.fillStyle=color||'#e2e8f0';ctx.font='bold 24px system-ui';ctx.textAlign='center';
+    ctx.fillText(text.slice(0,48),W/2,44,W-24);
+    var tex=new T.CanvasTexture(cv);
+    var mesh=new T.Mesh(new T.PlaneGeometry(W*0.05,H*0.05),
+      new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide,depthTest:false}));
+    mesh.renderOrder=999;
+    return mesh;
+  }
+
+  function showHoverLabel(node, hitPoint){
+    removeHoverLabel();
+    var color=KG_COLORS[node.type]||'#e2e8f0';
+    var text=node.label+(node.count?' ('+node.count+')':'');
+    hoverLabel=makeHoverLabel(text,color);
+    hoverLabel.position.copy(hitPoint);
+    hoverLabel.position.y+=4;
+    scene.add(hoverLabel);
+  }
+
+  function removeHoverLabel(){
+    if(hoverLabel){scene.remove(hoverLabel);hoverLabel.geometry.dispose();hoverLabel.material.dispose();hoverLabel=null;}
+  }
 
   function setupControllers(s){
     [0,1].forEach(function(i){
-      var c=renderer.xr.getController(i);
-      rig.add(c);
-      var rl=new THREE_.Line(new THREE_.BufferGeometry().setFromPoints([new THREE_.Vector3(0,0,0),new THREE_.Vector3(0,0,-1)]),new THREE_.LineBasicMaterial({color:i===0?0x60a5fa:0xf87171}));
-      rl.scale.z=60; c.add(rl);
-      c.addEventListener('selectstart',function(){
-        c.getWorldPosition(worldPos); c.getWorldQuaternion(worldQuat);
-        rayDir.set(0,0,-1).applyQuaternion(worldQuat);
-        raycaster.set(worldPos,rayDir);
-        if(exitPanel){var hits=raycaster.intersectObject(exitPanel,true);if(hits.length>0){renderer.xr.getSession()?.end();return;}}
+      var ctrl=renderer.xr.getController(i);rig.add(ctrl);
+      var rl=new T.Line(
+        new T.BufferGeometry().setFromPoints([new T.Vector3(0,0,0),new T.Vector3(0,0,-1)]),
+        new T.LineBasicMaterial({color:i===0?0x60a5fa:0xf87171}));
+      rl.scale.z=60;ctrl.add(rl);
+      ctrl.addEventListener('selectstart',function(){
+        ctrl.getWorldPosition(wp);ctrl.getWorldQuaternion(wq);
+        rd.set(0,0,-1).applyQuaternion(wq);rc.set(wp,rd);
+        if(exitPanel){var eh=rc.intersectObject(exitPanel,true);if(eh.length>0){renderer.xr.getSession()&&renderer.xr.getSession().end();return;}}
+        if(controlPanel){
+          var ch=rc.intersectObject(controlPanel,true);
+          if(ch.length>0&&ch[0].uv){handlePanelClick(controlPanel,ch[0].uv);return;}
+        }
       });
     });
   }
 
-  // ── Gamepad movement ───────────────────────────────────────────────────────
-  var fwd=new THREE_.Vector3(), rgt=new THREE_.Vector3();
+  // ── Render loop ───────────────────────────────────────────────────────────
+  var fwd=new T.Vector3(),rgt=new T.Vector3();
+  var _hoverRc=new T.Raycaster();_hoverRc.far=400;
+  var _lastHoverNode=null;
+
   renderer.setAnimationLoop(function(time,frame){
     if(!rigReady||!camera)return;
-    var t=camera; t.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
-    rgt.crossVectors(new THREE_.Vector3(0,1,0),fwd).negate();
+    var isXR=renderer.xr.isPresenting;
+    if(isXR&&!_xrWasPresenting){
+      _xrWasPresenting=true;
+      if(graphInst) graphInst.d3ReheatSimulation();
+    }
+    if(!isXR) _xrWasPresenting=false;
+    // Call _animationCycle directly — does tickFrame + renderObjs.tick + rAF (rAF fails on Quest, harmless)
+    // This is the same thing ForceGraph3D's own loop does, just driven by our XR loop
+    if(isXR&&graphInst&&graphInst._animationCycle){
+      try{ graphInst._animationCycle(); }catch(e){}
+    }
+    // Animate rocket
+    var sc=graphInst&&graphInst.scene&&graphInst.scene();
+    if(sc&&sc._rocketOrbit){
+      sc._rocketOrbit.rotation.y+=0.006;
+      sc._rocketTick=(sc._rocketTick||0)+0.12;
+      sc._rocketFlame.opacity=0.7+0.2*Math.sin(sc._rocketTick);
+    }
+    camera.getWorldDirection(fwd);fwd.y=0;fwd.normalize();
+    rgt.crossVectors(new T.Vector3(0,1,0),fwd).negate();
     if(frame){
       var sess=renderer.xr.getSession();
-      var srcs=sess?[...sess.inputSources]:[];
+      var srcs=sess?Array.from(sess.inputSources):[];
       srcs.forEach(function(src){
         if(!src.gamepad)return;
-        var axes=src.gamepad.axes;
-        if(axes.length<4)return;
+        var axes=src.gamepad.axes;if(axes.length<4)return;
         if(src.handedness==='left'){
           var lx=Math.abs(axes[2])>DEADZONE?axes[2]:0;
           var ly=Math.abs(axes[3])>DEADZONE?axes[3]:0;
@@ -345,17 +562,46 @@ function launchVR(allNodes, allLinks, missionCount){
           if(ry)rig.position.y-=ry*MOVE_SPEED*0.5;
         }
       });
-      // Update panels to face camera
-      [exitPanel,hintPanel].forEach(function(p){
-        if(p&&p.visible){var cp=new THREE_.Vector3();camera.getWorldPosition(cp);p.lookAt(cp);}
-      });
-    }
-    renderer.render(scene||getScene(),camera);
-  });
 
-  window.addEventListener('resize',function(){
-    if(graph)graph.width(window.innerWidth).height(window.innerHeight);
+      // ── Hover: raycast right controller against visible graph nodes ──────────
+      var rightSrc=srcs.find(function(s){return s.handedness==='right';});
+      if(rightSrc&&scene){
+        var rCtrl=renderer.xr.getController(1);
+        rCtrl.getWorldPosition(wp);rCtrl.getWorldQuaternion(wq);
+        rd.set(0,0,-1).applyQuaternion(wq);
+        _hoverRc.set(wp,rd);
+        var meshes=[];
+        graphInst.graphData().nodes.forEach(function(n){
+          if(n.__threeObj&&n.__threeObj.visible)meshes.push(n.__threeObj);
+        });
+        var hits=_hoverRc.intersectObjects(meshes,true);
+        var hitObj=hits.length>0?hits[0].object:null;
+        // Walk up to find the node object with __data
+        var hitNode=null;
+        if(hitObj){
+          var o=hitObj;
+          while(o){if(o.__data){hitNode=o.__data;break;}o=o.parent;}
+          if(!hitNode){
+            // match via threeObj reference
+            graphInst.graphData().nodes.forEach(function(n){
+              if(n.__threeObj===hitObj||n.__threeObj===hitObj.parent)hitNode=n;
+            });
+          }
+        }
+        if(hitNode!==_lastHoverNode){
+          _lastHoverNode=hitNode;
+          if(hitNode){showHoverLabel(hitNode,new T.Vector3(hitNode.x||0,(hitNode.y||0)+4,hitNode.z||0));}
+          else{removeHoverLabel();}
+        }
+      }
+
+      var cp=new T.Vector3();camera.getWorldPosition(cp);
+      [exitPanel,hintPanel,titlePanel].forEach(function(p){if(p&&p.visible)p.lookAt(cp);});
+      if(hoverLabel)hoverLabel.lookAt(cp);
+    }
+    renderer.render(scene||graphInst.scene(),camera);
   });
+  window.addEventListener('resize',function(){if(graphInst)graphInst.width(window.innerWidth).height(window.innerHeight);});
 }
 </script>
 </body>
