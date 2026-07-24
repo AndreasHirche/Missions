@@ -1644,8 +1644,8 @@ function openColFilter(col, btn, event){
   // Color maps for KG-style dots
   var dotColor={
     'Published':'#fde047','Draft':'#fef9c3','In Review':'#fef08a','Archived':'#c8c4b0',
-    'Standard':'#a78bfa','Partner Standard':'#818cf8','Partner AI':'#c084fc',
-    'Prompt-Led':'#f472b6','High Touch Engagement':'#fb923c'
+    'Standard':'#fde047','Partner Standard':'#fbbf24','Partner AI':'#f59e0b',
+    'Prompt-Led':'#fcd34d','High Touch Engagement':'#fef08a'
   };
   drop.innerHTML=options.map(function(opt){
     var isActive=opt.val===curVal;
@@ -3023,7 +3023,7 @@ function kgBuildUcTypePicker(){
     row.onmouseleave=function(){this.style.background='';};
     row.onclick=function(){kgUcTypeToggleRow(this);};
     var dot=document.createElement('div');
-    dot.style.cssText='width:9px;height:9px;border-radius:2px;flex-shrink:0;background:'+(isOn?'#a78bfa':'#334155');
+    dot.style.cssText='width:9px;height:9px;border-radius:2px;flex-shrink:0;background:'+(isOn?'#fde047':'#334155');
     var lbl=document.createElement('span');
     lbl.style.cssText='flex:1;font-size:0.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(isOn?'#e2e8f0':'#475569');
     lbl.textContent=t;
@@ -3043,7 +3043,7 @@ function kgUcTypeToggleRow(row){
     Object.keys(all).forEach(k=>filt.ucTypes.add(k));
   }
   if(filt.ucTypes.has(t)){filt.ucTypes.delete(t);row.children[0].style.background='#334155';row.children[1].style.color='#475569';}
-  else{filt.ucTypes.add(t);row.children[0].style.background='#a78bfa';row.children[1].style.color='#e2e8f0';}
+  else{filt.ucTypes.add(t);row.children[0].style.background='#fde047';row.children[1].style.color='#e2e8f0';}
   kgUpdateUcTypeBtn();
   KG.setFilter({ucTypes:filt.ucTypes});
 }
@@ -3052,7 +3052,7 @@ function kgUcTypeSelectAll(on){
   if(on) filt.ucTypes.clear();
   else filt.ucTypes=new Set(['__none__']);
   document.querySelectorAll('#kgUcTypeList [data-uctype]').forEach(function(row){
-    row.children[0].style.background=on?'#a78bfa':'#334155';
+    row.children[0].style.background=on?'#fde047':'#334155';
     row.children[1].style.color=on?'#e2e8f0':'#475569';
   });
   kgUpdateUcTypeBtn();
