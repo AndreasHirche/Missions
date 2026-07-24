@@ -1903,6 +1903,43 @@ var KG = (function(){
   var filt={q:'',cat:'',chan:'',co:'',statuses:[],cats:new Set(),cos:new Set(),coaches:new Set(),industries:new Set(),svcs:new Set(),ucTypes:new Set()};
   var built=false, selNode=null;
 
+  // ── Company logo support ──────────────────────────────────────────────
+  var _logoCache={};  // label → {img, ok}
+  var _domainMap={
+    'sap':'sap.com','accenture':'accenture.com','ibm':'ibm.com',
+    'deloitte':'deloitte.com','capgemini':'capgemini.com','kpmg':'kpmg.com',
+    'pwc':'pwc.com','ernst & young':'ey.com','ey':'ey.com',
+    'microsoft':'microsoft.com','google':'google.com','amazon':'amazon.com',
+    'aws':'aws.amazon.com','oracle':'oracle.com','salesforce':'salesforce.com',
+    'servicenow':'servicenow.com','workday':'workday.com','sap se':'sap.com',
+    'cognizant':'cognizant.com','infosys':'infosys.com','wipro':'wipro.com',
+    'tata':'tcs.com','ntt':'nttdata.com','t-systems':'t-systems.com'
+  };
+  function companyDomain(label){
+    var l=(label||'').toLowerCase().trim();
+    if(_domainMap[l]) return _domainMap[l];
+    // try first word if multi-word
+    var fw=l.split(/\s+/)[0];
+    if(_domainMap[fw]) return _domainMap[fw];
+    // fallback: slug.com
+    return fw.replace(/[^a-z0-9]/g,'')+'.com';
+  }
+  function getLogoImg(label, cb){
+    if(_logoCache[label]){cb(_logoCache[label]);return;}
+    var img=new Image();
+    var domain=companyDomain(label);
+    img.crossOrigin='anonymous';
+    img.onload=function(){_logoCache[label]={img:img,ok:true};cb(_logoCache[label]);};
+    img.onerror=function(){_logoCache[label]={img:null,ok:false};cb(_logoCache[label]);};
+    img.src='https://logo.clearbit.com/'+domain+'?size=64';
+  }
+  // Pre-fetch logos for all company nodes
+  function prefetchLogos(){
+    allNodes.filter(n=>n.type==='company').forEach(function(n){
+      getLogoImg(n.label, function(r){ if(r.ok) render2d(); });
+    });
+  }
+
   function normCat(c){ return CAT_NORM[(c||'').toLowerCase()]||c; }
   function nodeR(n){
     var b=KG_TYPE[n.type]?.rBase||6;
@@ -2208,6 +2245,30 @@ var KG = (function(){
         .on('drag', (e,d)=>{d.fx=e.x;d.fy=e.y;})
         .on('end',  (e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
 
+    // Company logo overlays — clipped circular images
+    var coNodes=otherNodes.filter(function(n){return n.type==='company';});
+    var defs=svgSel.select('defs');
+    if(defs.empty()) defs=svgSel.append('defs');
+    coNodes.forEach(function(n){
+      var clipId='coclip_'+n.id.replace(/[^a-z0-9]/gi,'_');
+      if(defs.select('#'+clipId).empty()){
+        defs.append('clipPath').attr('id',clipId)
+          .append('circle').attr('r',nodeR(n)-1);
+      }
+      var logo=_logoCache[n.label];
+      if(logo&&logo.ok){
+        root.append('image')
+          .attr('class','co-logo')
+          .attr('href',logo.img.src)
+          .attr('x',-nodeR(n)+1).attr('y',-nodeR(n)+1)
+          .attr('width',(nodeR(n)-1)*2).attr('height',(nodeR(n)-1)*2)
+          .attr('clip-path','url(#'+clipId+')')
+          .attr('pointer-events','none')
+          .attr('data-nid',n.id);
+      }
+    });
+    prefetchLogos();
+
     // Service nodes: squares (rect)
     rectSel=root.append('g').selectAll('rect').data(svcNodes,d=>d.id).join('rect')
       .attr('width',d=>nodeR(d)*2).attr('height',d=>nodeR(d)*2)
@@ -2251,6 +2312,13 @@ var KG = (function(){
     circSel.attr('cx',d=>d.x).attr('cy',d=>d.y);
     rectSel.attr('x',d=>d.x-nodeR(d)).attr('y',d=>d.y-nodeR(d));
     labelSel.attr('x',d=>d.x).attr('y',d=>d.y);
+    // Move company logo images
+    var nMap={};allNodes.forEach(function(n){nMap[n.id]=n;});
+    d3.select('#kgRoot').selectAll('image.co-logo').each(function(){
+      var el=d3.select(this);
+      var n=nMap[el.attr('data-nid')];
+      if(n){var r=nodeR(n)-1;el.attr('x',n.x-r).attr('y',n.y-r);}
+    });
   }
 
   function onHover2d(ev,d){
