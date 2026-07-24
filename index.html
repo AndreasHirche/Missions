@@ -433,7 +433,6 @@ var _ucrIdToDcId = {};  // UCR ID -> DC mission ID, built from portfolio in proc
 // UCR ID -> DC App ID mapping (loaded from uc_dc_ids.json)
 var UC_DC_IDS = {};
 (function(){
-  if(location.protocol==='file:')return;
   fetch('uc_dc_ids.json').then(function(r){return r.ok?r.json():null;}).then(function(d){
     if(d){ UC_DC_IDS=d; console.log('UC_DC_IDS loaded:',Object.keys(d).length,'entries'); _attachServices(); _attachDcIds(); }
   }).catch(function(){});
@@ -472,7 +471,6 @@ function _attachServices(){
 }
 
 (function loadUcServices(){
-  if(location.protocol==='file:')return;
   fetch('uc_services.json').then(function(r){return r.ok?r.json():null;}).then(function(d){
     if(d){ UC_SERVICES=d; console.log('UC_SERVICES loaded:',Object.keys(d).length,'missions'); _attachServices(); }
   }).catch(function(){});
@@ -481,7 +479,6 @@ function _attachServices(){
 // UC Detail data loaded from uc_details.json (fetched once at startup)
 var UC_DETAILS = {};
 (function loadUcDetails(){
-  if(location.protocol==='file:')return; // skip on file://
   fetch('uc_details.json').then(function(r){
     if(!r.ok)return;
     return r.json();
