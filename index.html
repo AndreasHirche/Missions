@@ -333,6 +333,7 @@ console.log('THREE:', typeof THREE, 'ForceGraph3D:', typeof ForceGraph3D);
     <select id="fCompany" onchange="applyFilters()"><option value=""></option></select>
     <select id="fAuthor" onchange="applyFilters()"><option value=""></option></select>
     <select id="fChannels" onchange="applyFilters()"><option value=""></option></select>
+    <select id="fUcType" onchange="applyFilters()"><option value=""></option></select>
   </div>
 
 </div><!-- /.wrap #top-panel -->
@@ -675,7 +676,7 @@ async function fetchAndCache(showIndicator){
             });
             filtered=allMissions.slice();
             renderFileSources({ucr:'missions_baked.json (pre-built)'});
-            buildCategoryFilter();buildMonthFilter();buildStatusFilter();buildCompanyFilter();buildAuthorFilter();buildChannelsFilter();
+            buildCategoryFilter();buildMonthFilter();buildStatusFilter();buildCompanyFilter();buildAuthorFilter();buildChannelsFilter();buildUcTypeFilter();
             renderKPIs();renderCharts();applyFilters();
             return;
           }
@@ -699,7 +700,7 @@ function clearCache(){
   localStorage.removeItem(CACHE_KEY);
   localStorage.removeItem('missions_cache_v4');
   allMissions=[];filtered=[];activeCoach='';
-  ['fStatus','fCategory','fMonth','fCompany','fAuthor','fChannels'].forEach(function(id){document.getElementById(id).value='';});
+  ['fStatus','fCategory','fMonth','fCompany','fAuthor','fChannels','fUcType'].forEach(function(id){document.getElementById(id).value='';});
   renderFileSources({});
   showNoData();
 }
@@ -895,6 +896,7 @@ function processData(portfolio,ucr){
     var channels=getF(r,'Published Channels','Publication Channels','publishedChannels')||'';
     var expiry =r['Expiry Date']||'';
     var modified=r['Last Modified On']||'';
+    var ucType  =getF(r,'Use Case Type')||'';
 
     // Diffs vs Portfolio (only flag when CSV has a value and Portfolio differs)
     var diffs={};
@@ -966,6 +968,7 @@ function processData(portfolio,ucr){
       '_coach':coach,
       '_ucr_expiry':expiry,
       '_ucr_modified':modified,
+      '_uc_type':ucType,
       '_ucr_detail': UC_DETAILS[ucrId] || null,
       '_services': [],
       '_focus_csv': focusCsv,
@@ -1045,6 +1048,19 @@ function buildChannelsFilter(){
   var sel=document.getElementById('fChannels');
   Object.keys(chans).sort().forEach(function(c){
     var o=document.createElement('option');o.value=c;o.textContent=c+' ('+chans[c]+')';sel.appendChild(o);
+  });
+}
+
+function buildUcTypeFilter(){
+  var types={};
+  allMissions.forEach(function(m){
+    var v=String(m['_uc_type']||'').trim();
+    if(v)types[v]=(types[v]||0)+1;
+  });
+  var sel=document.getElementById('fUcType');
+  sel.innerHTML='<option value=""></option>';
+  Object.keys(types).sort().forEach(function(t){
+    var o=document.createElement('option');o.value=t;o.textContent=t+' ('+types[t]+')';sel.appendChild(o);
   });
 }
 
@@ -1281,13 +1297,14 @@ function renderChips(){
   var fCompany=document.getElementById('fCompany').value;
   var fAuthor=document.getElementById('fAuthor').value;
   var fChannels=document.getElementById('fChannels').value;
-  if(st) chips.push({label:'Status: '+st, clear:function(){document.getElementById('fStatus').value='';applyFilters();}});
+  var fUcType=document.getElementById('fUcType').value;({label:'Status: '+st, clear:function(){document.getElementById('fStatus').value='';applyFilters();}});
   if(cat) chips.push({label:'Category: '+cat, clear:function(){document.getElementById('fCategory').value='';applyFilters();}});
   if(activeCoach) chips.push({label:'Coach: '+activeCoach, clear:function(){setCoach('');}});
   if(fMonth) chips.push({label:'Modified: '+fMonth, clear:function(){document.getElementById('fMonth').value='';applyFilters();}});
   if(fCompany) chips.push({label:'Company: '+fCompany, clear:function(){document.getElementById('fCompany').value='';applyFilters();}});
   if(fAuthor) chips.push({label:'Author: '+fAuthor, clear:function(){document.getElementById('fAuthor').value='';applyFilters();}});
   if(fChannels) chips.push({label:'Channel: '+fChannels, clear:function(){document.getElementById('fChannels').value='';applyFilters();}});
+  if(fUcType) chips.push({label:'Type: '+fUcType, clear:function(){document.getElementById('fUcType').value='';applyFilters();}});
   if(q) chips.push({label:'Search: '+q, clear:function(){document.getElementById('search').value='';applyFilters();}});
   var row=document.getElementById('chipRow');
   if(!chips.length){row.innerHTML='';return;}
@@ -1312,6 +1329,7 @@ function applyFilters(){
   var fCompany=document.getElementById('fCompany').value;
   var fAuthor=document.getElementById('fAuthor').value;
   var fChannels=document.getElementById('fChannels').value;
+  var fUcType=document.getElementById('fUcType').value;
 
   filtered=allMissions.filter(function(m){
     if(st&&String(m['STATUS']||'').trim()!==st)return false;
@@ -1322,6 +1340,7 @@ function applyFilters(){
       var ch=String(m['Published Channels']||'');
       if(!ch.split(',').map(function(s){return s.trim();}).includes(fChannels))return false;
     }
+    if(fUcType&&String(m['_uc_type']||'').trim()!==fUcType)return false;
     if(activeCoach){var c=String(m['Coach name(s)']||m._ucr&&m._ucr['Coach']||'').trim();if(c!==activeCoach)return false;}
     if(fMonth){
       var d=toDate(m._ucr_modified);
@@ -1373,6 +1392,7 @@ var COLS=[
   {key:'Author',label:'Author',sortable:true,tdClass:'td-muted',filterCol:'author'},
   {key:'STATUS',label:'Status',sortable:true,filterCol:'status'},
   {key:'Published Channels',label:'Channels',sortable:true,filterCol:'channels'},
+  {key:'_uc_type',label:'Type',sortable:true,filterCol:'uctype'},
   {key:'_focus_topics',label:'Focus Topics',sortable:false},
   {key:'_industries',label:'Industry',sortable:false},
   {key:'_services',label:'Services / Partner Apps',sortable:false},
@@ -1410,6 +1430,7 @@ function renderTable(){
       :c.filterCol==='month'?!!document.getElementById('fMonth').value
       :c.filterCol==='company'?!!document.getElementById('fCompany').value
       :c.filterCol==='author'?!!document.getElementById('fAuthor').value
+      :c.filterCol==='uctype'?!!document.getElementById('fUcType').value
       :false;
     var thClass=c.sortable?' class="sortable'+(isActive?' sorted':'')+'"':'';
     var thClick=c.sortable?' onclick="setSort(\''+c.key+'\')"':'';
@@ -1610,6 +1631,11 @@ function openColFilter(col, btn, event){
       String(m['Published Channels']||'').split(',').forEach(function(c){c=c.trim();if(c)chCount[c]=(chCount[c]||0)+1;});
     });
     options=[{val:'',label:'(All)'}].concat(Object.keys(chCount).sort().map(function(c){return{val:c,label:c+' ('+chCount[c]+')'};}));
+  }else if(col==='uctype'){
+    curVal=document.getElementById('fUcType').value;
+    var tCount={};
+    allMissions.forEach(function(m){var t=String(m['_uc_type']||'').trim();if(t)tCount[t]=(tCount[t]||0)+1;});
+    options=[{val:'',label:'(All)'}].concat(Object.keys(tCount).sort().map(function(t){return{val:t,label:t+' ('+tCount[t]+')'};}));
   }
   drop.innerHTML=options.map(function(opt){
     var isActive=opt.val===curVal;
@@ -1632,6 +1658,7 @@ function selectColFilter(col, val){
   else if(col==='company'){document.getElementById('fCompany').value=val;applyFilters();}
   else if(col==='author'){document.getElementById('fAuthor').value=val;applyFilters();}
   else if(col==='channels'){document.getElementById('fChannels').value=val;applyFilters();}
+  else if(col==='uctype'){document.getElementById('fUcType').value=val;applyFilters();}
 }
 
 document.addEventListener('click',function(e){
@@ -1726,6 +1753,19 @@ init();
         <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
           <button onclick="kgIndSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
           <button onclick="kgIndSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
+        </div>
+      </div>
+    </div>
+    <!-- UC Type filter -->
+    <div style="position:relative;display:inline-flex;align-items:center" id="kgUcTypeWrap">
+      <button id="kgUcTypeBtn" class="kg-picker-btn" onclick="kgToggleUcTypePicker()">
+        <span id="kgUcTypeBtnLabel">Type</span> ▾
+      </button>
+      <div id="kgUcTypePicker" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#1e293b;border:1px solid #334155;border-radius:9px;padding:8px;min-width:220px;max-height:300px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <div id="kgUcTypeList" style="display:flex;flex-direction:column;gap:1px"></div>
+        <div style="border-top:1px solid #334155;margin-top:6px;padding-top:6px;display:flex;gap:8px">
+          <button onclick="kgUcTypeSelectAll(true)"  style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">All</button>
+          <button onclick="kgUcTypeSelectAll(false)" style="flex:1;padding:4px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:0.7rem;cursor:pointer">None</button>
         </div>
       </div>
     </div>
@@ -1850,7 +1890,7 @@ var KG = (function(){
   var graph3d=null, mode='2d';
   var vis={mission:1,category:1,coach:0,tag:0,company:1,focus:0,service:1,svcopt:1,svcpartner:1,industry:0};
   var multiCatMode=true;
-  var filt={q:'',cat:'',chan:'',co:'',statuses:[],cats:new Set(),cos:new Set(),coaches:new Set(),industries:new Set(),svcs:new Set()};
+  var filt={q:'',cat:'',chan:'',co:'',statuses:[],cats:new Set(),cos:new Set(),coaches:new Set(),industries:new Set(),svcs:new Set(),ucTypes:new Set()};
   var built=false, selNode=null;
 
   function normCat(c){ return CAT_NORM[(c||'').toLowerCase()]||c; }
@@ -1876,7 +1916,7 @@ var KG = (function(){
       var coach=(m['Coach name(s)']||'').trim();
       var det=m._ucr_detail||UC_DETAILS[m['UCR ID']||'']||{};
       var industries=det.industries||m._industries||[];
-      node(mid, name, 'mission', {ucId:m['UCR ID'],status,url,coach,channels:m['Published Channels']||'',company:String(m['Authoring Company']||'').trim(),industries:industries});
+      node(mid, name, 'mission', {ucId:m['UCR ID'],status,url,coach,channels:m['Published Channels']||'',company:String(m['Authoring Company']||'').trim(),industries:industries,ucType:String(m['_uc_type']||'').trim()});
 
       // Use UCR Product Category; fall back to portfolio category only if missing
       var catRaw=(String(m['Category']||'').trim()||String(m['_portfolio_cat']||'').trim()||'Other');
@@ -1968,6 +2008,7 @@ var KG = (function(){
     kgBuildCoachPicker();
     kgBuildSvcPicker();
     kgBuildIndPicker();
+    kgBuildUcTypePicker();
     kgUpdateMissionStatusBtn();
     kgUpdatePartnerBtn();
     // Also update the toggle button counts
@@ -2100,6 +2141,10 @@ var KG = (function(){
       if(filt.industries.size>0&&n.type==='mission'){
         var mi=n.industries||[];
         if(!mi.some(function(i){return filt.industries.has(i);})) return false;
+      }
+      // UC Type filter
+      if(filt.ucTypes&&filt.ucTypes.size>0&&n.type==='mission'){
+        if(!filt.ucTypes.has(n.ucType||'')) return false;
       }
       // Service filter: hide service/svcopt/svcpartner nodes not selected
       if(filt.svcs.size>0&&(n.type==='service'||n.type==='svcopt'||n.type==='svcpartner')){
@@ -2453,7 +2498,7 @@ var KG = (function(){
     search: function(q){ filt.q=q; mode==='2d'?render2d():render3d(); },
     catFilter: function(c){ filt.cat=c; mode==='2d'?render2d():render3d(); },
     chanFilter: function(ch){ filt.chan=ch; mode==='2d'?render2d():render3d(); },
-    setFilter: function(f){ if(f.chan!==undefined)filt.chan=f.chan; if(f.statuses!==undefined)filt.statuses=f.statuses; if(f.cats!==undefined)filt.cats=f.cats; if(f.cos!==undefined)filt.cos=f.cos; if(f.coaches!==undefined)filt.coaches=f.coaches; if(f.industries!==undefined)filt.industries=f.industries; if(f.svcs!==undefined)filt.svcs=f.svcs; mode==='2d'?render2d():render3d(); },
+    setFilter: function(f){ if(f.chan!==undefined)filt.chan=f.chan; if(f.statuses!==undefined)filt.statuses=f.statuses; if(f.cats!==undefined)filt.cats=f.cats; if(f.cos!==undefined)filt.cos=f.cos; if(f.coaches!==undefined)filt.coaches=f.coaches; if(f.industries!==undefined)filt.industries=f.industries; if(f.svcs!==undefined)filt.svcs=f.svcs; if(f.ucTypes!==undefined)filt.ucTypes=f.ucTypes; mode==='2d'?render2d():render3d(); },
     zoomFit: function(){ if(mode==='2d')zoomFit2d(); else if(graph3d)graph3d.zoomToFit(400); },
     allCatLabels: function(){ return allNodes.filter(n=>n.type==='category').map(n=>n.label); },
     _allNodes: function(){ return allNodes; },
@@ -2951,9 +2996,75 @@ function kgToggleIndPicker(){
   p.style.display=p.style.display==='none'?'block':'none';
 }
 
+// ── UC Type picker ─────────────────────────────────────────────────────
+function kgBuildUcTypePicker(){
+  var list=document.getElementById('kgUcTypeList');
+  if(!list||!window.KG)return;
+  var filt=KG.getFilt();
+  var types={};
+  KG._allNodes().filter(n=>n.type==='mission').forEach(n=>{var t=n.ucType||'';if(t)types[t]=(types[t]||0)+1;});
+  list.innerHTML='';
+  Object.keys(types).sort().forEach(function(t){
+    var isOn=filt.ucTypes.size===0||filt.ucTypes.has(t);
+    var row=document.createElement('div');
+    row.dataset.uctype=t;
+    row.style.cssText='display:flex;align-items:center;gap:7px;padding:4px 6px;cursor:pointer;border-radius:5px;user-select:none';
+    row.onmouseenter=function(){this.style.background='rgba(255,255,255,0.05)';};
+    row.onmouseleave=function(){this.style.background='';};
+    row.onclick=function(){kgUcTypeToggleRow(this);};
+    var dot=document.createElement('div');
+    dot.style.cssText='width:9px;height:9px;border-radius:2px;flex-shrink:0;background:'+(isOn?'#a78bfa':'#334155');
+    var lbl=document.createElement('span');
+    lbl.style.cssText='flex:1;font-size:0.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(isOn?'#e2e8f0':'#475569');
+    lbl.textContent=t;
+    var cnt=document.createElement('span');
+    cnt.style.cssText='font-size:0.65rem;color:#475569;flex-shrink:0';
+    cnt.textContent=types[t];
+    row.appendChild(dot);row.appendChild(lbl);row.appendChild(cnt);
+    list.appendChild(row);
+  });
+  kgUpdateUcTypeBtn();
+}
+function kgUcTypeToggleRow(row){
+  var filt=KG.getFilt();
+  var t=row.dataset.uctype;
+  if(filt.ucTypes.size===0){
+    var all={};KG._allNodes().filter(n=>n.type==='mission').forEach(n=>{if(n.ucType)all[n.ucType]=1;});
+    Object.keys(all).forEach(k=>filt.ucTypes.add(k));
+  }
+  if(filt.ucTypes.has(t)){filt.ucTypes.delete(t);row.children[0].style.background='#334155';row.children[1].style.color='#475569';}
+  else{filt.ucTypes.add(t);row.children[0].style.background='#a78bfa';row.children[1].style.color='#e2e8f0';}
+  kgUpdateUcTypeBtn();
+  KG.setFilter({ucTypes:filt.ucTypes});
+}
+function kgUcTypeSelectAll(on){
+  var filt=KG.getFilt();
+  if(on) filt.ucTypes.clear();
+  else filt.ucTypes=new Set(['__none__']);
+  document.querySelectorAll('#kgUcTypeList [data-uctype]').forEach(function(row){
+    row.children[0].style.background=on?'#a78bfa':'#334155';
+    row.children[1].style.color=on?'#e2e8f0':'#475569';
+  });
+  kgUpdateUcTypeBtn();
+  KG.setFilter({ucTypes:filt.ucTypes});
+}
+function kgUpdateUcTypeBtn(){
+  var filt=window.KG?KG.getFilt():{ucTypes:new Set()};
+  var n=filt.ucTypes.size;
+  var total=document.querySelectorAll('#kgUcTypeList [data-uctype]').length;
+  var lbl=document.getElementById('kgUcTypeBtnLabel');
+  var btn=document.getElementById('kgUcTypeBtn');
+  if(lbl) lbl.textContent=(n===0||n===total)?'Type':n+' Types';
+  if(btn) btn.classList.toggle('active',n>0&&n<total);
+}
+function kgToggleUcTypePicker(){
+  var p=document.getElementById('kgUcTypePicker');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+
 // Close pickers when clicking outside
 document.addEventListener('click',function(e){
-  ['kgCatWrap','kgCoWrap','kgCoachWrap','kgSvcWrap','kgIndWrap','kgStatusWrap'].forEach(function(id){
+  ['kgCatWrap','kgCoWrap','kgCoachWrap','kgSvcWrap','kgIndWrap','kgStatusWrap','kgUcTypeWrap'].forEach(function(id){
     var wrap=document.getElementById(id);
     if(!wrap||wrap.contains(e.target))return;
     var picker=wrap.querySelector('[id$="Picker"]');
