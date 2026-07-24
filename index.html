@@ -584,7 +584,7 @@ function isExpiringSoon(v){
 }
 
 // ── Init ───────────────────────────────────────────────────────────────
-var CACHE_KEY='missions_cache_v10';
+var CACHE_KEY='missions_cache_v11';
 
 // Slim rows to only columns actually used — keeps localStorage size manageable
 var PORTFOLIO_COLS=['Mission ID','UCR ID','Mission Name','STATUS','Category','Author','Authoring Company',
@@ -593,7 +593,8 @@ var PORTFOLIO_COLS=['Mission ID','UCR ID','Mission Name','STATUS','Category','Au
 var UCR_COLS=['ID','Title','Mission Title','Name','Mission Name','Status','Lifecycle Status','State',
   'Category','Product Category','Solution Area','Product Area','Line of Business','Owner','Author','Created By','Submitted By',
   'Coach','Authoring Company','Company','Vendor','Expiry Date','Last Modified On',
-  'Validation Status','Content Validation Status','Validated','Tags','Published Channels','Publication Channels'];
+  'Validation Status','Content Validation Status','Validated','Tags','Published Channels','Publication Channels',
+  'Use Case Type'];
 
 function slimRows(rows, keepCols){
   return rows.map(function(r){
